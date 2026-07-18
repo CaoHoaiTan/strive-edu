@@ -1,15 +1,22 @@
-export function initMissionControl() {
+import {
+  END_DATE,
+  START_DATE,
+  clearMissionStore,
+  loadMissionStore,
+  makeTask,
+  saveMissionStore,
+  setStoreUser,
+} from '../../lib/store';
+
+export function initMissionControl(options = {}) {
   if (typeof window === 'undefined') return;
   if (window.__missionControlInited) return;
   window.__missionControlInited = true;
+  setStoreUser(options.userId || null);
 
 /* ================================================================
    STATE / STORAGE
 ================================================================= */
-const LS_KEY = 'missionControl_pmp_pspo_v1';
-const START_DATE = new Date(2026,6,17);   // 17 Jul 2026
-const END_DATE   = new Date(2027,0,15);   // 15 Jan 2027
-
 const PSPO_DOMAINS = ['Product Definition','Stakeholders','Product Value','Vision & Strategy','Backlog Management','Forecasting & Planning'];
 const PMP_DOMAINS  = ['People','Process','Business Environment'];
 
@@ -23,34 +30,8 @@ function uid(){ return Math.random().toString(36).slice(2,10); }
 
 let store = null;
 
-function defaultStore(){
-  return {
-    theme:'dark',
-    examDates:{ PSPO: fmtISO(new Date(2026,8,15)), PMP: fmtISO(new Date(2027,0,15)) },
-    tasks:{},           // date -> [{id,text,cert,done}]
-    studyLog:{},         // date -> {hours, note}
-    mockExams:[],         // {id,date,cert,score,domains:{}}
-    errorLog:[],           // {id,date,cert,domain,question,root,action}
-    resources:[],
-    calFilter:'all',
-    calViewMonth: fmtISO(START_DATE),
-    plannerDate: fmtISO(START_DATE)
-  };
-}
-
-function loadStore(){
-  const raw = localStorage.getItem(LS_KEY);
-  if(raw){
-    try{ store = JSON.parse(raw); }catch(e){ store = defaultStore(); }
-  } else {
-    store = defaultStore();
-    seedDefaultTasks();
-    seedDefaultResources();
-  }
-  if(!store.resources || store.resources.length===0) seedDefaultResources();
-  saveStore();
-}
-function saveStore(){ localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+function loadStore(){ store = loadMissionStore(); }
+function saveStore(){ saveMissionStore(store); }
 
 /* -------------------- seed default study plan -------------------- */
 const PSPO_POOL = [
@@ -116,7 +97,7 @@ function seedDefaultTasks(){
     store.tasks[pmpIso].push(mkTask('🎯 PMP EXAM DAY — Good luck!','PMP',false));
   }
 }
-function mkTask(text,cert,done,resourceId){ return {id:uid(), text, cert, done, resourceId: resourceId||null}; }
+function mkTask(text,cert,done,resourceId){ return makeTask(text, cert, done, resourceId||null); }
 
 function seedDefaultResources(){
   store.resources = [
@@ -213,10 +194,10 @@ document.getElementById('btnExportData').addEventListener('click', ()=>{
   a.click();
 });
 document.getElementById('btnResetData').addEventListener('click', ()=>{
-  if(confirm('Reset toàn bộ dữ liệu về mặc định? Hành động này không thể hoàn tác.')){
-    localStorage.removeItem(LS_KEY);
+  confirmAction('Reset toàn bộ dữ liệu về mặc định? Hành động này không thể hoàn tác.', ()=>{
+    clearMissionStore();
     loadStore(); applyTheme(); refreshTopCountdown(); renderView(currentView());
-  }
+  });
 });
 
 /* ================================================================
@@ -244,6 +225,15 @@ function allTasksFlat(){
   for(const iso in store.tasks){ store.tasks[iso].forEach(t=>out.push({...t, date:iso})); }
   return out;
 }
+function completedOnDate(task, iso){
+  if(!task.completedAt) return false;
+  return fmtISO(new Date(task.completedAt)) === iso;
+}
+function completedBetween(task, from, to){
+  if(!task.completedAt) return false;
+  const dt = new Date(task.completedAt);
+  return dt >= from && dt <= to;
+}
 function certStats(cert){
   const flat = allTasksFlat().filter(t=>t.cert===cert);
   const done = flat.filter(t=>t.done).length;
@@ -270,19 +260,12 @@ function computeStreak(){
   return streak;
 }
 function weeklyVelocity(){
-  // tasks completed in last 7 days based on done flag + we approximate using studyLog days presence
-  // Since tasks don't store completion date explicitly, approximate via count of done tasks whose date within last 7 days of "today" mapped to schedule date
   const today = new Date();
   const from = addDays(today,-6);
-  let count=0, days=0;
-  for(let i=0;i<7;i++){
-    const d = addDays(from,i);
-    const iso = fmtISO(d);
-    if(store.tasks[iso]){
-      count += store.tasks[iso].filter(t=>t.done).length;
-    }
-    if(store.studyLog[iso] && store.studyLog[iso].hours>0) days++;
-  }
+  from.setHours(0,0,0,0);
+  const to = new Date(today);
+  to.setHours(23,59,59,999);
+  const count = allTasksFlat().filter(t=>completedBetween(t, from, to)).length;
   return {count, perDay:(count/7).toFixed(1)};
 }
 function riskLevel(){
@@ -364,6 +347,21 @@ function drawLineChart(canvas, series, opts={}){
       ctx.fill();
     }
   });
+  const hitPoints = [];
+  series.forEach(s=>{
+    s.points.forEach((p,i)=>{
+      hitPoints.push({
+        kind:'point',
+        x:xPos(i),
+        y:yPos(p.y),
+        label:s.label,
+        value:p.y,
+        xLabel:p.x_label,
+        color:s.color
+      });
+    });
+  });
+  attachChartTooltip(canvas, hitPoints);
 }
 
 function drawBarChart(canvas, labels, values, colorFn, opts={}){
@@ -397,6 +395,21 @@ function drawBarChart(canvas, labels, values, colorFn, opts={}){
     ctx.fillText(lb, cx, h-8);
     ctx.textAlign='left';
   });
+  attachChartTooltip(canvas, labels.map((lb,i)=>{
+    const cx = padL + plotW*((i+0.5)/labels.length);
+    const val = values[i];
+    const bh = plotH*(val/maxV);
+    return {
+      kind:'bar',
+      x:cx,
+      y:padT+plotH-bh,
+      label:lb,
+      value:val,
+      xLabel:lb,
+      color:typeof colorFn==='function'? colorFn(i,val) : colorFn,
+      radius:Math.max(12, plotW/labels.length*0.45)
+    };
+  }));
 }
 function roundRectPath(ctx,x,y,w,h,r){
   ctx.beginPath();
@@ -406,6 +419,46 @@ function roundRectPath(ctx,x,y,w,h,r){
   ctx.arcTo(x,y+h,x,y,r);
   ctx.arcTo(x,y,x+w,y,r);
   ctx.closePath();
+}
+function chartTooltipEl(){
+  let tip = document.getElementById('chartTooltip');
+  if(!tip){
+    tip = el('div','chart-tooltip');
+    tip.id = 'chartTooltip';
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+function attachChartTooltip(canvas, points){
+  canvas.__missionTooltipPoints = points;
+  if(canvas.__missionTooltipBound) return;
+  canvas.__missionTooltipBound = true;
+  canvas.addEventListener('mousemove', e=>{
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const data = canvas.__missionTooltipPoints || [];
+    let nearest = null;
+    let best = Infinity;
+    data.forEach(point=>{
+      const dx = point.x-x, dy = point.y-y;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const radius = point.radius || 14;
+      if(dist < radius && dist < best){ nearest = point; best = dist; }
+    });
+    const tip = chartTooltipEl();
+    if(!nearest){
+      tip.classList.remove('show');
+      return;
+    }
+    tip.innerHTML = `<span style="background:${nearest.color}"></span><strong>${escapeHtml(nearest.label)}</strong><em>${escapeHtml(nearest.xLabel)} · ${nearest.value}</em>`;
+    tip.style.left = `${e.clientX + 12}px`;
+    tip.style.top = `${e.clientY + 12}px`;
+    tip.classList.add('show');
+  });
+  canvas.addEventListener('mouseleave', ()=>{
+    chartTooltipEl().classList.remove('show');
+  });
 }
 
 function drawRadarChart(canvas, labels, datasets){
@@ -510,12 +563,12 @@ function renderDashboard(){
   let d = new Date(START_DATE);
   while(d<=END_DATE){ allDates.push(new Date(d)); d=addDays(d,1); }
   const totalTasks = allTasksFlat().length;
-  let cum=0;
   const burnUp=[], burnDown=[], ideal=[];
   const today = new Date();
   allDates.forEach((dt,i)=>{
-    const iso = fmtISO(dt);
-    if(dt<=today && store.tasks[iso]) cum += store.tasks[iso].filter(t=>t.done).length;
+    const endOfDay = new Date(dt);
+    endOfDay.setHours(23,59,59,999);
+    const cum = allTasksFlat().filter(t=>t.completedAt && new Date(t.completedAt)<=endOfDay && dt<=today).length;
     burnUp.push({x_label: fmtShort(dt), y: cum});
     burnDown.push({x_label: fmtShort(dt), y: Math.max(0,totalTasks-cum)});
     ideal.push({x_label: fmtShort(dt), y: Math.round(totalTasks*(i/(allDates.length-1)))});
@@ -533,7 +586,7 @@ function renderDashboard(){
     let done=0, hrs=0;
     for(let i=0;i<7;i++){
       const iso = fmtISO(addDays(wkStart,i));
-      if(store.tasks[iso]) done += store.tasks[iso].filter(t=>t.done).length;
+      done += allTasksFlat().filter(t=>completedOnDate(t, iso)).length;
       if(store.studyLog[iso]) hrs += (store.studyLog[iso].hours||0);
     }
     weekLabels.push(fmtShort(wkStart));
@@ -631,6 +684,56 @@ function moveTask(fromIso, toIso, taskId){
   store.tasks[toIso].push(task);
   saveStore();
 }
+function setFieldError(id, message){
+  const node = document.getElementById(id);
+  if(node) node.textContent = message || '';
+}
+function toast(message){
+  let node = document.getElementById('appToast');
+  if(!node){
+    node = el('div','app-toast');
+    node.id = 'appToast';
+    document.body.appendChild(node);
+  }
+  node.textContent = message;
+  node.classList.add('show');
+  window.clearTimeout(node.__hideTimer);
+  node.__hideTimer = window.setTimeout(()=>node.classList.remove('show'), 3200);
+}
+function confirmAction(message, onConfirm){
+  let backdrop = document.getElementById('confirmBackdrop');
+  if(!backdrop){
+    backdrop = el('div','modal-backdrop');
+    backdrop.id = 'confirmBackdrop';
+    backdrop.innerHTML = `
+      <div class="glass modal confirm-modal">
+        <div class="modal-head"><h3>Xác nhận</h3><div class="close-x" data-confirm-close>✕</div></div>
+        <div class="small" data-confirm-message></div>
+        <div class="confirm-actions">
+          <button class="btn btn-ghost" data-confirm-close>Huỷ</button>
+          <button class="btn btn-danger" data-confirm-ok>Reset</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', e=>{
+      if(e.target===backdrop || e.target.dataset.confirmClose!==undefined) backdrop.classList.remove('open');
+    });
+  }
+  backdrop.querySelector('[data-confirm-message]').textContent = message;
+  const ok = backdrop.querySelector('[data-confirm-ok]');
+  ok.onclick = ()=>{
+    backdrop.classList.remove('open');
+    onConfirm();
+  };
+  backdrop.classList.add('open');
+}
+function readPercentInput(input){
+  if(!input || input.value==='') return {ok:false, value:null};
+  const value = Number(input.value);
+  if(!Number.isFinite(value) || value < 0 || value > 100) return {ok:false, value:null};
+  return {ok:true, value};
+}
 
 /* ---- day modal ---- */
 const dayModalBackdrop = document.getElementById('dayModalBackdrop');
@@ -675,7 +778,9 @@ function buildTaskRow(t, iso, refreshFn){
   check.innerHTML = t.done? '✓':'';
   check.addEventListener('click', (e)=>{
     e.stopPropagation();
-    t.done = !t.done; saveStore(); refreshFn(); renderView(currentView());
+    t.done = !t.done;
+    t.completedAt = t.done ? new Date().toISOString() : null;
+    saveStore(); refreshFn(); renderView(currentView());
   });
   row.appendChild(check);
   const txt = el('div','task-text', t.text);
@@ -684,7 +789,7 @@ function buildTaskRow(t, iso, refreshFn){
     const linkedRes = t.resourceId ? store.resources.find(r=>r.id===t.resourceId) : null;
     if(linkedRes){
       if(linkedRes.link){ window.open(linkedRes.link, '_blank'); }
-      else { alert('Task này đã liên kết tài liệu:\n\n"'+linkedRes.name+'"\n\n(chưa có link — bạn có thể thêm link trong Resource Library).'); }
+      else { toast('Task đã liên kết tài liệu "'+linkedRes.name+'" nhưng chưa có link.'); }
     } else {
       startEditTask(txt, t, iso, refreshFn, row);
     }
@@ -748,7 +853,7 @@ function buildTaskRow(t, iso, refreshFn){
     const linkedRes = t.resourceId ? store.resources.find(r=>r.id===t.resourceId) : null;
     if(linkedRes){
       if(linkedRes.link){ window.open(linkedRes.link, '_blank'); }
-      else { alert('Task này đã liên kết tài liệu:\n\n"'+linkedRes.name+'"\n\n(chưa có link — bạn có thể thêm link trong Resource Library).'); }
+      else { toast('Task đã liên kết tài liệu "'+linkedRes.name+'" nhưng chưa có link.'); }
     } else {
       startEditTask(txt, t, iso, refreshFn, row);
     }
@@ -886,14 +991,33 @@ document.getElementById('examCertSelect').addEventListener('change', renderExamD
 
 document.getElementById('btnAddExam').addEventListener('click', ()=>{
   const cert = document.getElementById('examCertSelect').value;
-  const date = document.getElementById('examDateInput').value || fmtISO(new Date());
-  const score = +document.getElementById('examScoreInput').value;
-  if(!score && score!==0){ alert('Nhập điểm tổng nhé.'); return; }
+  const date = document.getElementById('examDateInput').value;
+  const scoreInput = document.getElementById('examScoreInput');
+  const scoreResult = readPercentInput(scoreInput);
+  setFieldError('examDateError', '');
+  setFieldError('examScoreError', '');
+  setFieldError('examDomainError', '');
+  if(!date){
+    setFieldError('examDateError', 'Chọn ngày thi thử.');
+    return;
+  }
+  if(!scoreResult.ok){
+    setFieldError('examScoreError', 'Điểm tổng phải là số từ 0 đến 100.');
+    return;
+  }
   const domains = {};
+  let invalidDomain = null;
   document.querySelectorAll('.domain-score-input').forEach(inp=>{
-    if(inp.value!=='') domains[inp.dataset.domain] = +inp.value;
+    if(inp.value==='') return;
+    const result = readPercentInput(inp);
+    if(!result.ok) invalidDomain = inp.dataset.domain;
+    else domains[inp.dataset.domain] = result.value;
   });
-  store.mockExams.push({id:uid(), date, cert, score, domains});
+  if(invalidDomain){
+    setFieldError('examDomainError', `Điểm domain "${invalidDomain}" phải từ 0 đến 100.`);
+    return;
+  }
+  store.mockExams.push({id:uid(), date, cert, score:scoreResult.value, domains});
   store.mockExams.sort((a,b)=> a.date.localeCompare(b.date));
   saveStore();
   document.getElementById('examScoreInput').value='';
@@ -1097,13 +1221,21 @@ function renderErrorLog(){
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
 
 document.getElementById('btnAddError').addEventListener('click', ()=>{
-  const date = document.getElementById('elDate').value || fmtISO(new Date());
+  const date = document.getElementById('elDate').value;
   const cert = document.getElementById('elCert').value;
   const domain = document.getElementById('elDomain').value.trim();
   const question = document.getElementById('elQuestion').value.trim();
   const root = document.getElementById('elRoot').value.trim();
   const action = document.getElementById('elAction').value.trim();
-  if(!domain || !question){ alert('Nhập ít nhất Domain và Câu hỏi.'); return; }
+  setFieldError('errorLogFormError', '');
+  if(!date){
+    setFieldError('errorLogFormError', 'Chọn ngày ghi nhận lỗi.');
+    return;
+  }
+  if(!domain || !question){
+    setFieldError('errorLogFormError', 'Nhập ít nhất Domain và Câu hỏi.');
+    return;
+  }
   store.errorLog.push({id:uid(), date, cert, domain, question, root, action});
   saveStore();
   ['elDomain','elQuestion','elRoot','elAction'].forEach(id=> document.getElementById(id).value='');
@@ -1113,7 +1245,11 @@ document.getElementById('btnAddError').addEventListener('click', ()=>{
 /* ================================================================
    INIT
 ================================================================= */
-window.addEventListener('resize', ()=>{ renderView(currentView()); });
+let resizeTimer = null;
+window.addEventListener('resize', ()=>{
+  window.clearTimeout(resizeTimer);
+  resizeTimer = window.setTimeout(()=>{ renderView(currentView()); }, 150);
+});
 
 loadStore();
 applyTheme();

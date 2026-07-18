@@ -213,12 +213,15 @@ export const BODY_HTML = `
           <div class="field">
             <label>Ngày thi thử</label>
             <input type="date" id="examDateInput">
+            <div class="field-error" id="examDateError"></div>
           </div>
           <div class="field">
             <label>Điểm tổng (%)</label>
             <input type="number" id="examScoreInput" min="0" max="100" placeholder="VD: 78">
+            <div class="field-error" id="examScoreError"></div>
           </div>
           <div id="examDomainInputs"></div>
+          <div class="field-error" id="examDomainError"></div>
           <button class="btn btn-primary" id="btnAddExam" style="width:100%; margin-top:6px;">+ Lưu kết quả</button>
         </div>
         <div class="glass card">
@@ -354,6 +357,7 @@ export const BODY_HTML = `
           <input type="text" id="elAction" placeholder="Hành động khắc phục">
           <button class="btn btn-primary btn-sm" id="btnAddError">+</button>
         </div>
+        <div class="field-error" id="errorLogFormError"></div>
         <div class="table-wrap">
           <table id="errorLogTable">
             <thead><tr><th>Date</th><th>Certificate</th><th>Domain</th><th>Question</th><th>Root Cause</th><th>Action</th><th></th></tr></thead>
