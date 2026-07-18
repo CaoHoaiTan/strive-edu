@@ -196,7 +196,7 @@ themeSwitch.addEventListener('click', ()=>{
   applyTheme(); saveStore(); renderView(currentView());
 });
 function applyTheme(){
-  document.body.setAttribute('data-theme', store.theme);
+  document.documentElement.setAttribute('data-theme', store.theme);
   themeSwitch.classList.toggle('on', store.theme==='dark');
 }
 function currentView(){
