@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BODY_HTML } from './legacy/body-markup';
 import { initMissionControl } from './legacy/init-mission-control';
-import { getSupabaseBrowserClient } from '../lib/supabase';
+import { getAuthRedirectUrl, getSupabaseBrowserClient } from '../lib/supabase';
 
 export default function Home() {
   const containerRef = useRef(null);
@@ -58,7 +58,7 @@ export default function Home() {
     const { error } = await authState.client.auth.signInWithOtp({
       email: normalizedEmail,
       options: {
-        emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL || window.location.origin,
+        emailRedirectTo: getAuthRedirectUrl(),
       },
     });
     if (error) {

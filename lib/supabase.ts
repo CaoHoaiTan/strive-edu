@@ -10,3 +10,13 @@ export function getSupabaseBrowserClient() {
   if (!browserClient) browserClient = createClient(url, anonKey);
   return browserClient;
 }
+
+export function getAuthRedirectUrl() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL;
+
+  if (siteUrl) return siteUrl.replace(/\/$/, '');
+  if (vercelUrl) return `https://${vercelUrl}`.replace(/\/$/, '');
+  if (typeof window !== 'undefined') return window.location.origin;
+  return undefined;
+}

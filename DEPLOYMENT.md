@@ -18,8 +18,18 @@ Project này là ứng dụng Next.js (App Router), không có backend/database 
    - **Build Command**: `next build` (mặc định, không cần đổi).
    - **Output Directory**: để mặc định (Next.js tự quản lý).
    - **Install Command**: `npm install` (mặc định).
-4. Phần **Environment Variables**: project hiện chưa cần biến môi trường nào (dữ liệu lưu ở `localStorage` trên trình duyệt người dùng). Bỏ qua bước này.
+4. Phần **Environment Variables**: thêm các biến Supabase/Auth:
+   - `NEXT_PUBLIC_SUPABASE_URL`: URL project Supabase, ví dụ `https://xxxx.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: anon public key của project Supabase
+   - `NEXT_PUBLIC_SITE_URL`: URL production của app, ví dụ `https://strive-edu-xxxx.vercel.app` hoặc custom domain
 5. Bấm **Deploy**. Vercel sẽ build và cấp cho bạn 1 URL dạng `https://strive-edu-xxxx.vercel.app`.
+
+Sau khi có URL production, vào Supabase Dashboard → **Authentication → URL Configuration**:
+
+- **Site URL**: đặt đúng URL production của app.
+- **Redirect URLs**: thêm URL production, ví dụ `https://strive-edu-xxxx.vercel.app`, và chỉ giữ `http://localhost:3000` nếu còn cần test local.
+
+Nếu email magic link vẫn có `redirect_to=http://localhost:3000`, nguyên nhân thường là app đang chạy local hoặc deployment chưa có `NEXT_PUBLIC_SITE_URL` tại thời điểm build. Sau khi sửa biến môi trường trên Vercel, redeploy lại production.
 
 Từ lần deploy này trở đi, **mỗi lần push code lên nhánh `main`, Vercel tự động build và deploy lại** (CI/CD có sẵn, không cần làm gì thêm). Các PR/nhánh khác sẽ có Preview Deployment riêng.
 
