@@ -10,6 +10,7 @@ export default function Home() {
   const [authState, setAuthState] = useState({ loading: true, session: null, client: null });
   const [email, setEmail] = useState('');
   const [authMessage, setAuthMessage] = useState('');
+  const [authCooldown, setAuthCooldown] = useState(0);
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -34,6 +35,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (authCooldown <= 0) return undefined;
+    const timer = window.setTimeout(() => setAuthCooldown((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [authCooldown]);
+
+  useEffect(() => {
     if (authState.loading) return;
     if (authState.client && !authState.session) return;
     initMissionControl({ userId: authState.session?.user?.id || null });
@@ -42,6 +49,7 @@ export default function Home() {
   async function signIn(event) {
     event.preventDefault();
     setAuthMessage('');
+    if (authCooldown > 0) return;
     const normalizedEmail = email.trim();
     if (!normalizedEmail) {
       setAuthMessage('Nhập email để đăng nhập.');
@@ -51,7 +59,18 @@ export default function Home() {
       email: normalizedEmail,
       options: { emailRedirectTo: window.location.origin },
     });
-    setAuthMessage(error ? error.message : 'Đã gửi magic link. Kiểm tra email để đăng nhập.');
+    if (error) {
+      const isRateLimit = error.status === 429 || /rate limit/i.test(error.message);
+      setAuthMessage(
+        isRateLimit
+          ? 'Bạn vừa yêu cầu email đăng nhập. Chờ khoảng 60 giây rồi thử lại, hoặc kiểm tra inbox/spam.'
+          : error.message,
+      );
+      if (isRateLimit) setAuthCooldown(60);
+      return;
+    }
+    setAuthCooldown(60);
+    setAuthMessage('Đã gửi magic link. Kiểm tra email để đăng nhập.');
   }
 
   if (authState.loading) {
@@ -78,7 +97,9 @@ export default function Home() {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
           />
-          <button className="btn btn-primary" type="submit">Gửi magic link</button>
+          <button className="btn btn-primary" type="submit" disabled={authCooldown > 0}>
+            {authCooldown > 0 ? `Gửi lại sau ${authCooldown}s` : 'Gửi magic link'}
+          </button>
           {authMessage ? <div className="field-error">{authMessage}</div> : null}
         </form>
       </main>
