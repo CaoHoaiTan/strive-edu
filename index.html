@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Control · PSPO + PMP</title>
+<style>
+/* ============================================================
+   TOKENS
+============================================================ */
+:root{
+  --font-display:'Segoe UI Semibold','Segoe UI',ui-sans-serif,system-ui,sans-serif;
+  --font-body:'Segoe UI',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-mono:'Cascadia Code','Consolas',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  --radius:14px;
+  --radius-sm:8px;
+  --pspo:#2fd6b0;
+  --pmp:#f2b33d;
+  --green:#39d98a;
+  --yellow:#f2c94c;
+  --red:#f0576a;
+}
+[data-theme="dark"]{
+  --bg-0:#080b12;
+  --bg-1:#0c1119;
+  --bg-2:#111826;
+  --card:rgba(255,255,255,0.045);
+  --card-solid:#121a28;
+  --card-border:rgba(255,255,255,0.09);
+  --text-0:#eef2f8;
+  --text-1:#aab4c5;
+  --text-2:#6d7890;
+  --accent:#5b8cff;
+  --accent-2:#8b6bff;
+  --grid-line:rgba(255,255,255,0.06);
+  --shadow:0 10px 30px rgba(0,0,0,0.35);
+}
+[data-theme="light"]{
+  --bg-0:#eef1f6;
+  --bg-1:#e7ebf2;
+  --bg-2:#dfe4ee;
+  --card:rgba(255,255,255,0.65);
+  --card-solid:#ffffff;
+  --card-border:rgba(20,30,50,0.08);
+  --text-0:#151b2b;
+  --text-1:#4a5468;
+  --text-2:#7c869c;
+  --accent:#3860e0;
+  --accent-2:#7248d6;
+  --grid-line:rgba(20,30,50,0.08);
+  --shadow:0 10px 30px rgba(30,40,70,0.10);
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:var(--font-body);
+  background:
+    radial-gradient(1200px 700px at 85% -10%, rgba(91,140,255,0.16), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(47,214,176,0.10), transparent 60%),
+    var(--bg-0);
+  color:var(--text-0);
+  min-height:100vh;
+  overflow-x:hidden;
+  transition:background .3s ease,color .3s ease;
+}
+::-webkit-scrollbar{width:9px; height:9px;}
+::-webkit-scrollbar-thumb{background:var(--card-border); border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+a{color:inherit;}
+button,input,select,textarea{font-family:inherit; color:inherit;}
+.glass{
+  background:var(--card);
+  border:1px solid var(--card-border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  box-shadow:var(--shadow);
+}
+.eyebrow{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--text-2);
+}
+h1,h2,h3{font-family:var(--font-display); font-weight:700; letter-spacing:-0.01em;}
+.tag{
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.05em;
+  padding:2px 8px; border-radius:20px; font-weight:600;
+}
+.tag-pspo{background:rgba(47,214,176,0.14); color:var(--pspo); border:1px solid rgba(47,214,176,0.3);}
+.tag-pmp{background:rgba(242,179,61,0.14); color:var(--pmp); border:1px solid rgba(242,179,61,0.3);}
+.btn{
+  display:inline-flex; align-items:center; gap:6px; justify-content:center;
+  padding:9px 16px; border-radius:10px; border:1px solid var(--card-border);
+  background:var(--card-solid); cursor:pointer; font-size:13px; font-weight:600;
+  color:var(--text-0); transition:transform .15s ease, border-color .15s ease, background .15s ease;
+}
+.btn:hover{transform:translateY(-1px); border-color:var(--accent);}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; border:none;}
+.btn-ghost{background:transparent;}
+.btn-danger{color:var(--red); border-color:rgba(240,87,106,0.35);}
+.btn-sm{padding:6px 10px; font-size:12px; border-radius:8px;}
+input[type=text],input[type=date],input[type=number],select,textarea{
+  background:var(--bg-2); border:1px solid var(--card-border); border-radius:8px;
+  padding:9px 11px; font-size:13px; color:var(--text-0); outline:none; width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+label{font-size:11.5px; color:var(--text-2); font-family:var(--font-mono); letter-spacing:.03em; display:block; margin-bottom:4px;}
+.field{margin-bottom:12px;}
+.icon{width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}
+
+/* ============================================================
+   LAYOUT
+============================================================ */
+.app{display:flex; min-height:100vh;}
+.sidebar{
+  width:236px; flex-shrink:0; padding:22px 14px; position:sticky; top:0; height:100vh;
+  display:flex; flex-direction:column; gap:4px; z-index:40;
+  border-right:1px solid var(--card-border);
+  background:var(--bg-1);
+}
+.brand{display:flex; align-items:center; gap:10px; padding:6px 10px 22px 10px;}
+.brand-mark{
+  width:34px; height:34px; border-radius:10px; flex-shrink:0;
+  background:linear-gradient(135deg,var(--pspo),var(--accent));
+  display:flex; align-items:center; justify-content:center; font-family:var(--font-mono);
+  font-weight:800; font-size:13px; color:#04120e;
+}
+.brand-text .t1{font-family:var(--font-display); font-size:14.5px; font-weight:800; line-height:1.15;}
+.brand-text .t2{font-family:var(--font-mono); font-size:10px; color:var(--text-2); letter-spacing:.06em;}
+.nav-item{
+  display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px;
+  cursor:pointer; color:var(--text-1); font-size:13.5px; font-weight:600; user-select:none;
+  transition:background .15s ease, color .15s ease;
+}
+.nav-item:hover{background:var(--card); color:var(--text-0);}
+.nav-item.active{background:linear-gradient(135deg, rgba(91,140,255,.18), rgba(139,107,255,.10)); color:var(--text-0); box-shadow:inset 0 0 0 1px rgba(91,140,255,.25);}
+.nav-item .icon{opacity:.85;}
+.nav-section-label{font-family:var(--font-mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-2); padding:16px 12px 6px;}
+.sidebar-foot{margin-top:auto; padding:10px; display:flex; flex-direction:column; gap:8px;}
+.theme-toggle{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-radius:10px; background:var(--card); border:1px solid var(--card-border);}
+.switch{width:38px; height:21px; border-radius:20px; background:var(--bg-2); position:relative; cursor:pointer; border:1px solid var(--card-border);}
+.switch::after{content:''; position:absolute; width:15px; height:15px; border-radius:50%; background:var(--accent); top:2px; left:2px; transition:left .2s ease;}
+.switch.on::after{left:19px;}
+
+.main{flex:1; min-width:0; padding:22px 26px 60px; max-width:1420px;}
+.topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; gap:14px; flex-wrap:wrap;}
+.topbar h1{font-size:22px;}
+.topbar .sub{color:var(--text-2); font-size:12.5px; margin-top:2px;}
+.hamburger{display:none;}
+
+.view{display:none; animation:fadein .35s ease;}
+.view.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.grid{display:grid; gap:16px;}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g2{grid-template-columns:repeat(2,1fr);}
+.card{padding:18px;}
+.card h3{font-size:14px; margin-bottom:2px;}
+.card .desc{font-size:11.5px; color:var(--text-2); margin-bottom:14px;}
+
+/* KPI cards */
+.kpi{padding:16px 18px; display:flex; flex-direction:column; gap:8px; position:relative; overflow:hidden;}
+.kpi .eyebrow{margin-bottom:2px;}
+.kpi .val{font-family:var(--font-display); font-size:26px; font-weight:800;}
+.kpi .delta{font-size:11.5px; font-weight:600;}
+.delta.up{color:var(--green);} .delta.down{color:var(--red);} .delta.flat{color:var(--text-2);}
+.kpi-icon{position:absolute; right:14px; top:14px; opacity:.35;}
+
+/* progress ring */
+.ring-wrap{display:flex; align-items:center; gap:18px;}
+.ring-label{display:flex; flex-direction:column; gap:6px;}
+.ring-num{font-family:var(--font-display); font-weight:800; font-size:22px;}
+
+.risk-pill{display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:30px; font-weight:700; font-size:13px; font-family:var(--font-mono);}
+.risk-green{background:rgba(57,217,138,.14); color:var(--green); border:1px solid rgba(57,217,138,.35);}
+.risk-yellow{background:rgba(242,201,76,.14); color:var(--yellow); border:1px solid rgba(242,201,76,.35);}
+.risk-red{background:rgba(240,87,106,.14); color:var(--red); border:1px solid rgba(240,87,106,.35);}
+.dot{width:8px; height:8px; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor;}
+
+canvas{width:100%; display:block;}
+
+/* Calendar */
+.cal-toolbar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap;}
+.filter-chip{padding:6px 13px; border-radius:20px; border:1px solid var(--card-border); background:var(--card-solid); font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font-mono);}
+.filter-chip.active-all{box-shadow:inset 0 0 0 2px var(--accent);}
+.filter-chip.active-pspo{box-shadow:inset 0 0 0 2px var(--pspo); color:var(--pspo);}
+.filter-chip.active-pmp{box-shadow:inset 0 0 0 2px var(--pmp); color:var(--pmp);}
+.cal-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px;}
+.cal-dow{text-align:center; font-family:var(--font-mono); font-size:10.5px; color:var(--text-2); letter-spacing:.08em; padding-bottom:4px;}
+.cal-cell{
+  min-height:112px; min-width:0; overflow:hidden; border-radius:10px; padding:8px; border:1px solid var(--card-border);
+  background:var(--card); display:flex; flex-direction:column; gap:5px; cursor:pointer;
+  transition:border-color .15s ease, transform .15s ease;
+}
+.cal-cell:hover{border-color:var(--accent); transform:translateY(-1px);}
+.cal-cell.empty{background:transparent; border:none; cursor:default;}
+.cal-cell.today{box-shadow:0 0 0 2px var(--accent) inset;}
+.cal-cell.exam-day{box-shadow:0 0 0 2px var(--red) inset;}
+.cal-date-row{display:flex; align-items:center; justify-content:space-between;}
+.cal-date-num{font-family:var(--font-mono); font-size:11.5px; color:var(--text-1); font-weight:700;}
+.cal-progress-mini{width:22px; height:22px; flex-shrink:0;}
+.cal-tasks{display:flex; flex-direction:column; gap:2px; overflow:hidden;}
+.cal-task-chip{
+  font-size:10px; padding:2px 5px; border-radius:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border-left:3px solid var(--accent); background:rgba(255,255,255,0.04);
+}
+.cal-task-chip.done{opacity:.4; text-decoration:line-through;}
+.cal-task-chip.c-pspo{border-left-color:var(--pspo);}
+.cal-task-chip.c-pmp{border-left-color:var(--pmp);}
+.cal-more{font-size:9.5px; color:var(--text-2); font-family:var(--font-mono);}
+.cal-cell.drag-over{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset;}
+
+/* modal */
+.modal-backdrop{position:fixed; inset:0; background:rgba(4,6,12,.55); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:200; padding:20px;}
+.modal-backdrop.open{display:flex;}
+.modal{width:100%; max-width:520px; max-height:86vh; overflow-y:auto; padding:22px;}
+.modal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+.close-x{width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:var(--bg-2); border:1px solid var(--card-border);}
+.task-row{display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:8px; background:var(--card); border:1px solid var(--card-border); margin-bottom:6px; cursor:grab; flex-wrap:wrap;}
+.task-row.has-link{cursor:pointer;}
+.task-row.has-link:hover{border-color:var(--accent);}
+.task-row.done .task-text{text-decoration:line-through; color:var(--text-2);}
+.task-check{width:18px; height:18px; border-radius:5px; border:1.6px solid var(--text-2); flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center;}
+.task-check.checked{background:var(--green); border-color:var(--green); color:#04120e;}
+.task-text{flex:1; font-size:13px; cursor:text; border-radius:5px; padding:2px 4px; margin:-2px -4px; min-width:120px; word-break:break-word;}
+.task-text:hover{background:rgba(255,255,255,0.06);}
+.task-controls{display:flex; align-items:center; gap:8px; flex-shrink:0; margin-left:auto;}
+.task-del{opacity:0; cursor:pointer; color:var(--red);}
+.task-row:hover .task-del{opacity:.7;}
+.task-res-select{
+  max-width:118px; font-size:10.5px; padding:3px 6px; border-radius:7px;
+  background:var(--bg-2); border:1px solid var(--card-border); color:var(--text-1);
+  flex-shrink:0;
+}
+.task-link-open{
+  flex-shrink:0; width:20px; height:20px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+  background:rgba(91,140,255,.14); color:var(--accent); text-decoration:none; font-size:12px; font-weight:700;
+}
+.task-link-open:hover{background:rgba(91,140,255,.28);}
+.task-edit-btn{opacity:0; cursor:pointer; color:var(--text-2); font-size:12px; flex-shrink:0;}
+.task-row:hover .task-edit-btn{opacity:.7;}
+.task-edit-btn:hover{color:var(--accent);}
+.add-task-row{display:flex; gap:8px; margin-top:8px;}
+.add-task-row input[type=text]{flex:1; min-width:0;}
+.add-task-row select{flex-shrink:0;}
+
+/* resource library */
+.res-card{padding:16px; display:flex; flex-direction:column; gap:10px;}
+.res-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
+.res-icon{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+.res-title{font-weight:700; font-size:13.5px;}
+.res-meta{font-size:11px; color:var(--text-2); margin-top:2px;}
+.res-progress-bar{height:6px; border-radius:6px; background:var(--bg-2); overflow:hidden;}
+.res-progress-fill{height:100%; border-radius:6px;}
+.res-footer{display:flex; align-items:center; justify-content:space-between; font-size:11.5px; color:var(--text-2);}
+
+/* exam analytics */
+.exam-history-row{display:grid; grid-template-columns:90px 60px 1fr 50px; gap:10px; align-items:center; padding:9px 4px; border-bottom:1px solid var(--grid-line); font-size:12.5px;}
+.score-bar-bg{height:8px; border-radius:6px; background:var(--bg-2); overflow:hidden;}
+.score-bar-fill{height:100%; border-radius:6px;}
+.heat-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px;}
+.heat-cell{border-radius:10px; padding:12px 10px; border:1px solid var(--card-border); position:relative;}
+.heat-cell .hname{font-size:11.5px; font-weight:700;}
+.heat-cell .hcount{font-family:var(--font-mono); font-size:20px; font-weight:800; margin-top:6px;}
+.heat-cell .hlabel{font-size:9.5px; color:var(--text-2); font-family:var(--font-mono);}
+
+/* table (error log) */
+.table-wrap{overflow-x:auto;}
+table{width:100%; border-collapse:collapse; font-size:12.5px; min-width:820px;}
+th{text-align:left; font-family:var(--font-mono); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-2); padding:9px 8px; border-bottom:1px solid var(--card-border);}
+td{padding:9px 8px; border-bottom:1px solid var(--grid-line); vertical-align:top; word-break:break-word;}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.el-del{color:var(--red); cursor:pointer; font-size:11px;}
+
+/* planner */
+.planner-day-nav{display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+.planner-date-big{font-family:var(--font-display); font-size:20px; font-weight:800;}
+.planner-date-sub{font-size:11.5px; color:var(--text-2); font-family:var(--font-mono);}
+.hours-slider-wrap{display:flex; align-items:center; gap:10px;}
+input[type=range]{-webkit-appearance:none; height:5px; border-radius:6px; background:var(--bg-2); flex:1;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); cursor:pointer; box-shadow:0 0 0 4px rgba(91,140,255,.18);}
+
+/* misc */
+.empty-state{text-align:center; padding:40px 10px; color:var(--text-2); font-size:13px;}
+.flex{display:flex;}
+.between{justify-content:space-between;}
+.center{align-items:center;}
+.gap8{gap:8px;} .gap12{gap:12px;} .gap6{gap:6px;}
+.mt8{margin-top:8px;} .mt14{margin-top:14px;} .mt18{margin-top:18px;}
+.small{font-size:11.5px; color:var(--text-2);}
+.section-title{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px;}
+.section-title h2{font-size:18px;}
+.section-title .desc{font-size:12px; color:var(--text-2); margin-top:2px;}
+.legend{display:flex; gap:14px; align-items:center; font-size:11.5px; color:var(--text-2); flex-wrap:wrap;}
+.legend-dot{width:9px; height:9px; border-radius:3px; display:inline-block; margin-right:5px;}
+
+@media (max-width:1050px){
+  .g4{grid-template-columns:repeat(2,1fr);}
+  .g3{grid-template-columns:repeat(2,1fr);}
+}
+@media (max-width:880px){
+  .sidebar{position:fixed; left:-260px; top:0; transition:left .25s ease; box-shadow:20px 0 40px rgba(0,0,0,.3);}
+  .sidebar.open{left:0;}
+  .hamburger{display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:10px; background:var(--card-solid); border:1px solid var(--card-border); cursor:pointer;}
+  .main{padding:16px;}
+  .g4,.g3,.g2{grid-template-columns:1fr 1fr;}
+  .cal-grid{grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px;}
+  .cal-cell{min-height:70px; padding:5px;}
+  .cal-task-chip{display:none;}
+  .exam-history-row{grid-template-columns:70px 46px 1fr 40px;}
+}
+@media (max-width:560px){
+  .g4,.g3,.g2{grid-template-columns:1fr 1fr;}
+  .topbar h1{font-size:18px;}
+  .main{padding:12px;}
+  .card,.glass.card{padding:13px;}
+  .cal-grid{gap:3px;}
+  .cal-cell{min-height:52px; padding:3px; border-radius:8px; gap:2px;}
+  .cal-date-num{font-size:10px;}
+  .cal-progress-mini{width:15px; height:15px;}
+  .cal-dow{font-size:9px; padding-bottom:2px;}
+  .cal-toolbar{gap:6px;}
+  .topbar{flex-wrap:wrap;}
+  .task-controls{flex-basis:100%; justify-content:flex-end; margin-top:2px; margin-left:0;}
+  .task-res-select{max-width:150px; flex:1;}
+  .add-task-row{flex-wrap:wrap;}
+  .add-task-row input[type=text]{flex-basis:100%;}
+  .el-form-grid{grid-template-columns:1fr 1fr !important;}
+  .el-form-grid button{grid-column:1/-1;}
+  .exam-history-row{grid-template-columns:56px 38px 1fr 34px; gap:6px; font-size:11.5px;}
+  .heat-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));}
+}
+@media (max-width:700px){
+  .table-wrap{overflow-x:visible;}
+  #errorLogTable{min-width:0; width:100%;}
+  #errorLogTable thead{display:none;}
+  #errorLogTable, #errorLogTable tbody, #errorLogTable tr, #errorLogTable td{display:block; width:100%;}
+  #errorLogTable tr{border:1px solid var(--card-border); border-radius:10px; padding:6px 10px; margin-bottom:10px; background:var(--card);}
+  #errorLogTable tr.el-empty-row{border:none; background:transparent; padding:0;}
+  #errorLogTable td{border-bottom:1px solid var(--grid-line); padding:7px 0 7px 42%; position:relative; min-height:20px;}
+  #errorLogTable td:last-child{border-bottom:none; padding-left:0; text-align:right;}
+  #errorLogTable td[data-label]::before{
+    content:attr(data-label); position:absolute; left:0; top:7px; width:38%;
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-2);
+  }
+}
+@media (max-width:420px){
+  .g4,.g3,.g2{grid-template-columns:1fr;}
+  .ring-wrap{gap:12px;}
+}
+.overlay-bg{position:fixed; inset:0; background:rgba(4,6,10,.4); z-index:39; display:none;}
+.overlay-bg.show{display:block;}
+</style>
+</head>
+<body data-theme="dark">
+
+<div class="overlay-bg" id="overlayBg"></div>
+
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">MC</div>
+      <div class="brand-text">
+        <div class="t1">Mission Control</div>
+        <div class="t2">PSPO · PMP TRACKER</div>
+      </div>
+    </div>
+
+    <div class="nav-item active" data-view="dashboard">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>
+      Executive Dashboard
+    </div>
+    <div class="nav-item" data-view="calendar">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Learning Calendar
+    </div>
+    <div class="nav-item" data-view="resources">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5v-18Z"/><path d="M20 17H6.5A2.5 2.5 0 0 0 4 19.5"/></svg>
+      Resource Library
+    </div>
+    <div class="nav-item" data-view="mockexam">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Mock Exam Analytics
+    </div>
+    <div class="nav-item" data-view="planner">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Daily Planner
+    </div>
+    <div class="nav-item" data-view="analytics">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      Analytics
+    </div>
+    <div class="nav-item" data-view="errorlog">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+      Error Log
+    </div>
+
+    <div class="nav-section-label">Data</div>
+    <div class="nav-item" id="btnExportData">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 3v13m0 0-4-4m4 4 4-4"/><path d="M3 17v2a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/></svg>
+      Export JSON
+    </div>
+    <div class="nav-item" id="btnResetData">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+      Reset dữ liệu
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="theme-toggle">
+        <span class="small" style="font-family:var(--font-mono)">☾ / ☀ Theme</span>
+        <div class="switch on" id="themeSwitch"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <div class="topbar">
+      <div class="flex center gap12">
+        <div class="hamburger" id="hamburger">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </div>
+        <div>
+          <h1 id="pageTitle">Executive Dashboard</h1>
+          <div class="sub" id="pageSub">Tổng quan hành trình chinh phục PSPO &amp; PMP</div>
+        </div>
+      </div>
+      <div class="flex gap8 center">
+        <span class="tag tag-pspo" id="pspoCountdownTag">PSPO —d</span>
+        <span class="tag tag-pmp" id="pmpCountdownTag">PMP —d</span>
+      </div>
+    </div>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="view active" id="view-dashboard">
+      <div class="grid g4">
+        <div class="glass kpi">
+          <span class="eyebrow">Overall Progress</span>
+          <div class="ring-wrap">
+            <svg width="66" height="66" viewBox="0 0 66 66" id="ringOverall"></svg>
+            <div>
+              <div class="ring-num" id="overallPct">0%</div>
+              <div class="small" id="overallSub">0 / 0 tasks</div>
+            </div>
+          </div>
+        </div>
+        <div class="glass kpi">
+          <span class="eyebrow">Study Streak</span>
+          <div class="val" id="streakVal">0 ngày 🔥</div>
+          <div class="delta flat" id="streakSub">Chưa có dữ liệu học</div>
+        </div>
+        <div class="glass kpi">
+          <span class="eyebrow">Learning Velocity</span>
+          <div class="val" id="velocityVal">0.0</div>
+          <div class="delta flat" id="velocitySub">task / ngày (7 ngày gần nhất)</div>
+        </div>
+        <div class="glass kpi">
+          <span class="eyebrow">Risk Indicator</span>
+          <div class="mt8"><span class="risk-pill risk-green" id="riskPill"><span class="dot"></span> ON TRACK</span></div>
+          <div class="small mt8" id="riskSub">Đang tính toán...</div>
+        </div>
+      </div>
+
+      <div class="grid g2 mt18">
+        <div class="glass card">
+          <h3>PSPO Progress</h3>
+          <div class="desc" id="pspoExamDateLabel">Ngày thi: —</div>
+          <div class="ring-wrap">
+            <svg width="90" height="90" viewBox="0 0 90 90" id="ringPspo"></svg>
+            <div>
+              <div class="ring-num" id="pspoPct">0%</div>
+              <div class="small" id="pspoSub">0 / 0 tasks hoàn thành</div>
+              <div class="small mt8" id="pspoCountdownFull">— ngày còn lại</div>
+            </div>
+          </div>
+        </div>
+        <div class="glass card">
+          <h3>PMP Progress</h3>
+          <div class="desc" id="pmpExamDateLabel">Ngày thi: —</div>
+          <div class="ring-wrap">
+            <svg width="90" height="90" viewBox="0 0 90 90" id="ringPmp"></svg>
+            <div>
+              <div class="ring-num" id="pmpPct">0%</div>
+              <div class="small" id="pmpSub">0 / 0 tasks hoàn thành</div>
+              <div class="small mt8" id="pmpCountdownFull">— ngày còn lại</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass card mt18">
+        <div class="section-title">
+          <div>
+            <h3>Burn-up / Burn-down Chart</h3>
+            <div class="desc">Task hoàn thành lũy kế (burn-up) so với task còn lại (burn-down), toàn bộ 183 ngày lộ trình.</div>
+          </div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:var(--accent)"></span>Burn-up (đã làm)</span>
+            <span><span class="legend-dot" style="background:var(--red)"></span>Burn-down (còn lại)</span>
+            <span><span class="legend-dot" style="background:var(--text-2)"></span>Ideal</span>
+          </div>
+        </div>
+        <canvas id="chartBurn" height="230"></canvas>
+      </div>
+
+      <div class="grid g2 mt18">
+        <div class="glass card">
+          <h3>KPI theo tuần</h3>
+          <div class="desc">Số task hoàn thành mỗi tuần trong 8 tuần gần nhất</div>
+          <canvas id="chartWeeklyKpi" height="200"></canvas>
+        </div>
+        <div class="glass card">
+          <h3>Giờ học theo tuần</h3>
+          <div class="desc">Tổng số giờ học ghi nhận mỗi tuần</div>
+          <canvas id="chartWeeklyHours" height="200"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CALENDAR ============ -->
+    <section class="view" id="view-calendar">
+      <div class="glass card">
+        <div class="cal-toolbar">
+          <div class="flex gap8 center">
+            <button class="btn btn-sm" id="calPrev">‹</button>
+            <div style="font-family:var(--font-mono); font-weight:700; font-size:13px; min-width:150px; text-align:center;" id="calMonthLabel">—</div>
+            <button class="btn btn-sm" id="calNext">›</button>
+            <button class="btn btn-sm" id="calToday">Hôm nay</button>
+          </div>
+          <div class="flex gap8">
+            <div class="filter-chip active-all" data-filter="all">Tất cả</div>
+            <div class="filter-chip" data-filter="PSPO">PSPO</div>
+            <div class="filter-chip" data-filter="PMP">PMP</div>
+          </div>
+        </div>
+        <div class="cal-grid" id="calDow"></div>
+        <div class="cal-grid mt8" id="calGrid"></div>
+        <div class="small mt14">💡 Kéo–thả (drag &amp; drop) một task từ ô ngày này sang ô ngày khác để dời lịch học. Click vào ô ngày để xem chi tiết &amp; thêm task.</div>
+      </div>
+    </section>
+
+    <!-- ============ RESOURCES ============ -->
+    <section class="view" id="view-resources">
+      <div class="section-title">
+        <div>
+          <h2>Resource Library</h2>
+          <div class="desc">Tài liệu &amp; nguồn học chính thức cho PSPO và PMP — tick khi hoàn thành.</div>
+        </div>
+        <button class="btn btn-primary" id="btnAddResource">+ Thêm tài liệu</button>
+      </div>
+      <div class="grid g3" id="resourceGrid"></div>
+    </section>
+
+    <!-- ============ MOCK EXAM ============ -->
+    <section class="view" id="view-mockexam">
+      <div class="grid g2">
+        <div class="glass card">
+          <h3>Ghi nhận kết quả thi thử</h3>
+          <div class="desc">Nhập điểm mỗi lần làm mock exam để theo dõi xu hướng</div>
+          <div class="field">
+            <label>Chứng chỉ</label>
+            <select id="examCertSelect">
+              <option value="PSPO">PSPO</option>
+              <option value="PMP">PMP</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Ngày thi thử</label>
+            <input type="date" id="examDateInput">
+          </div>
+          <div class="field">
+            <label>Điểm tổng (%)</label>
+            <input type="number" id="examScoreInput" min="0" max="100" placeholder="VD: 78">
+          </div>
+          <div id="examDomainInputs"></div>
+          <button class="btn btn-primary" id="btnAddExam" style="width:100%; margin-top:6px;">+ Lưu kết quả</button>
+        </div>
+        <div class="glass card">
+          <h3>Radar Chart theo Domain</h3>
+          <div class="desc">Điểm trung bình theo từng domain (dựa trên các lần thi đã lưu)</div>
+          <div class="field" style="max-width:200px;">
+            <select id="radarCertSelect">
+              <option value="PSPO">PSPO</option>
+              <option value="PMP">PMP</option>
+            </select>
+          </div>
+          <canvas id="chartRadar" height="230"></canvas>
+        </div>
+      </div>
+
+      <div class="glass card mt18">
+        <h3>Xu hướng điểm theo thời gian</h3>
+        <div class="desc">Đường xu hướng điểm số của tất cả các lần thi thử</div>
+        <canvas id="chartExamTrend" height="200"></canvas>
+      </div>
+
+      <div class="grid g2 mt18">
+        <div class="glass card">
+          <h3>Lịch sử các lần thi</h3>
+          <div id="examHistoryList"></div>
+        </div>
+        <div class="glass card">
+          <h3>Heatmap chủ đề yếu</h3>
+          <div class="desc">Số lần sai theo domain (dữ liệu lấy từ Error Log)</div>
+          <div class="heat-grid" id="heatGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PLANNER ============ -->
+    <section class="view" id="view-planner">
+      <div class="glass card">
+        <div class="planner-day-nav">
+          <button class="btn btn-sm" id="plannerPrev">‹</button>
+          <div>
+            <div class="planner-date-big" id="plannerDateBig">—</div>
+            <div class="planner-date-sub" id="plannerDateSub">—</div>
+          </div>
+          <button class="btn btn-sm" id="plannerNext">›</button>
+          <button class="btn btn-sm" id="plannerTodayBtn">Hôm nay</button>
+          <span class="tag" id="plannerExamTag" style="display:none;"></span>
+        </div>
+
+        <div id="plannerTaskList"></div>
+        <div class="add-task-row">
+          <input type="text" id="plannerNewTaskText" placeholder="Thêm task mới cho ngày này...">
+          <select id="plannerNewTaskCert" style="max-width:110px;">
+            <option value="PSPO">PSPO</option>
+            <option value="PMP">PMP</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="plannerAddTaskBtn">+ Thêm</button>
+        </div>
+
+        <div class="grid g2 mt18">
+          <div class="field">
+            <label>Số giờ học hôm nay</label>
+            <div class="hours-slider-wrap">
+              <input type="range" id="plannerHoursSlider" min="0" max="12" step="0.5" value="0">
+              <span class="tag" id="plannerHoursVal" style="min-width:44px; text-align:center;">0h</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Ghi chú trong ngày</label>
+            <input type="text" id="plannerNoteInput" placeholder="Cảm nhận, khó khăn, điểm cần ôn lại...">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ANALYTICS ============ -->
+    <section class="view" id="view-analytics">
+      <div class="grid g4">
+        <div class="glass kpi">
+          <span class="eyebrow">Tổng số giờ học</span>
+          <div class="val" id="anTotalHours">0h</div>
+        </div>
+        <div class="glass kpi">
+          <span class="eyebrow">Average Hours / Day</span>
+          <div class="val" id="anAvgHours">0.0h</div>
+        </div>
+        <div class="glass kpi">
+          <span class="eyebrow">Average Score</span>
+          <div class="val" id="anAvgScore">—</div>
+        </div>
+        <div class="glass kpi">
+          <span class="eyebrow">Predicted Pass Rate</span>
+          <div class="val" id="anPassRate">—</div>
+        </div>
+      </div>
+
+      <div class="glass card mt18">
+        <h3>Completion Forecast</h3>
+        <div class="desc">Dự báo ngày hoàn thành toàn bộ kế hoạch dựa trên tốc độ học hiện tại (velocity)</div>
+        <div class="grid g2 mt14">
+          <div>
+            <div class="small">PSPO</div>
+            <div class="ring-num" id="forecastPspo" style="font-size:16px;">—</div>
+          </div>
+          <div>
+            <div class="small">PMP</div>
+            <div class="ring-num" id="forecastPmp" style="font-size:16px;">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass card mt18">
+        <h3>% Hoàn thành theo từng Domain</h3>
+        <div class="desc">Tính theo tỉ lệ task liên quan tới domain đã hoàn thành (gán qua Error Log &amp; Mock Exam)</div>
+        <canvas id="chartDomainCompletion" height="220"></canvas>
+      </div>
+    </section>
+
+    <!-- ============ ERROR LOG ============ -->
+    <section class="view" id="view-errorlog">
+      <div class="glass card">
+        <div class="section-title">
+          <div>
+            <h2 style="font-size:16px;">Error Log</h2>
+            <div class="desc">Ghi lại mỗi câu hỏi làm sai để phân tích root-cause &amp; hành động khắc phục</div>
+          </div>
+        </div>
+        <div class="grid el-form-grid" style="grid-template-columns:100px 90px 1fr 1fr 1fr 1fr 40px; gap:8px; margin-bottom:14px;">
+          <input type="date" id="elDate">
+          <select id="elCert"><option value="PSPO">PSPO</option><option value="PMP">PMP</option></select>
+          <input type="text" id="elDomain" placeholder="Domain">
+          <input type="text" id="elQuestion" placeholder="Câu hỏi / chủ đề sai">
+          <input type="text" id="elRoot" placeholder="Root cause">
+          <input type="text" id="elAction" placeholder="Hành động khắc phục">
+          <button class="btn btn-primary btn-sm" id="btnAddError">+</button>
+        </div>
+        <div class="table-wrap">
+          <table id="errorLogTable">
+            <thead><tr><th>Date</th><th>Certificate</th><th>Domain</th><th>Question</th><th>Root Cause</th><th>Action</th><th></th></tr></thead>
+            <tbody id="errorLogBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============ DAY MODAL ============ -->
+<div class="modal-backdrop" id="dayModalBackdrop">
+  <div class="glass modal">
+    <div class="modal-head">
+      <div>
+        <h3 id="dayModalTitle">—</h3>
+        <div class="small" id="dayModalSub">—</div>
+      </div>
+      <div class="close-x" id="dayModalClose">✕</div>
+    </div>
+    <div id="dayModalTaskList"></div>
+    <div class="add-task-row">
+      <input type="text" id="dayModalNewTaskText" placeholder="Thêm task...">
+      <select id="dayModalNewTaskCert" style="max-width:100px;">
+        <option value="PSPO">PSPO</option>
+        <option value="PMP">PMP</option>
+      </select>
+      <button class="btn btn-primary btn-sm" id="dayModalAddBtn">+</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RESOURCE MODAL ============ -->
+<div class="modal-backdrop" id="resModalBackdrop">
+  <div class="glass modal">
+    <div class="modal-head">
+      <h3>Thêm tài liệu</h3>
+      <div class="close-x" id="resModalClose">✕</div>
+    </div>
+    <div class="field"><label>Tên tài liệu</label><input type="text" id="resNameInput"></div>
+    <div class="field"><label>Chứng chỉ</label>
+      <select id="resCertInput"><option value="PSPO">PSPO</option><option value="PMP">PMP</option><option value="Both">Cả hai</option></select>
+    </div>
+    <div class="field"><label>Loại</label>
+      <select id="resTypeInput"><option value="doc">Tài liệu</option><option value="video">Video</option><option value="course">Khóa học</option></select>
+    </div>
+    <div class="field"><label>Link (tuỳ chọn)</label><input type="text" id="resLinkInput" placeholder="https://..."></div>
+    <button class="btn btn-primary" id="resSaveBtn" style="width:100%;">Lưu</button>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   STATE / STORAGE
+================================================================= */
+const LS_KEY = 'missionControl_pmp_pspo_v1';
+const START_DATE = new Date(2026,6,17);   // 17 Jul 2026
+const END_DATE   = new Date(2027,0,15);   // 15 Jan 2027
+
+const PSPO_DOMAINS = ['Product Definition','Stakeholders','Product Value','Vision & Strategy','Backlog Management','Forecasting & Planning'];
+const PMP_DOMAINS  = ['People','Process','Business Environment'];
+
+function fmtISO(d){ const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function addDays(d,n){ const r=new Date(d); r.setDate(r.getDate()+n); return r; }
+function dayDiff(a,b){ return Math.round((a-b)/86400000); }
+function fmtVN(d){ const dow=['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]; return `${dow} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; }
+function fmtShort(d){ return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+let store = null;
+
+function defaultStore(){
+  return {
+    theme:'dark',
+    examDates:{ PSPO: fmtISO(new Date(2026,8,15)), PMP: fmtISO(new Date(2027,0,15)) },
+    tasks:{},           // date -> [{id,text,cert,done}]
+    studyLog:{},         // date -> {hours, note}
+    mockExams:[],         // {id,date,cert,score,domains:{}}
+    errorLog:[],           // {id,date,cert,domain,question,root,action}
+    resources:[],
+    calFilter:'all',
+    calViewMonth: fmtISO(START_DATE),
+    plannerDate: fmtISO(START_DATE)
+  };
+}
+
+function loadStore(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw){
+    try{ store = JSON.parse(raw); }catch(e){ store = defaultStore(); }
+  } else {
+    store = defaultStore();
+    seedDefaultTasks();
+    seedDefaultResources();
+  }
+  if(!store.resources || store.resources.length===0) seedDefaultResources();
+  saveStore();
+}
+function saveStore(){ localStorage.setItem(LS_KEY, JSON.stringify(store)); }
+
+/* -------------------- seed default study plan -------------------- */
+const PSPO_POOL = [
+  'Đọc Scrum Guide - phần {n}',
+  'Xem video Andrew Ramdayal - bài {n}',
+  'Làm 20 câu hỏi trắc nghiệm PSPO',
+  'Ôn tập Flashcards PSPO',
+  'Học Scrum.org Learning Path - module {n}',
+  'Xem David McLachlan - bài {n}',
+  'Tổng hợp ghi chú Product Backlog Management',
+  'Luyện đề mini-test PSPO (10 câu)'
+];
+const PMP_POOL = [
+  'Đọc PMBOK 7 - chương {n}',
+  'Đọc Agile Practice Guide - phần {n}',
+  'Ôn ECO Domain: People',
+  'Ôn ECO Domain: Process',
+  'Ôn ECO Domain: Business Environment',
+  'Làm 20 câu hỏi trắc nghiệm PMP',
+  'Xem video PMP - bài {n}',
+  'Luyện đề mini-test PMP (10 câu)'
+];
+
+function seedDefaultTasks(){
+  const pspoExam = parseISO(store.examDates.PSPO);
+  let d = new Date(START_DATE);
+  let dayIdx = 0;
+  while(d <= END_DATE){
+    const iso = fmtISO(d);
+    const dayTasks = [];
+    if(dayIdx===0){
+      dayTasks.push(mkTask('Scrum Guide Chapter 1','PSPO',false));
+      dayTasks.push(mkTask('AR Section 4','PMP',false));
+      dayTasks.push(mkTask('20 Scrum Questions','PSPO',false));
+      dayTasks.push(mkTask('Review Flashcards','PSPO',false));
+    } else if(d <= pspoExam){
+      // PSPO focus phase: 3 pspo tasks + light pmp intro on weekends
+      for(let i=0;i<3;i++){
+        const t = PSPO_POOL[(dayIdx*3+i) % PSPO_POOL.length].replace('{n}', Math.ceil((dayIdx+i+1)/3));
+        dayTasks.push(mkTask(t,'PSPO',false));
+      }
+      if(d.getDay()===0 || d.getDay()===6){
+        const t = PMP_POOL[dayIdx % PMP_POOL.length].replace('{n}', Math.ceil((dayIdx+1)/4));
+        dayTasks.push(mkTask(t,'PMP',false));
+      }
+    } else if (d.getTime()===pspoExam.getTime()){
+      dayTasks.push(mkTask('🎯 PSPO EXAM DAY — Good luck!','PSPO',false));
+    } else {
+      // PMP focus phase
+      for(let i=0;i<3;i++){
+        const t = PMP_POOL[(dayIdx*3+i) % PMP_POOL.length].replace('{n}', Math.ceil((dayIdx+i+1)/3));
+        dayTasks.push(mkTask(t,'PMP',false));
+      }
+    }
+    store.tasks[iso] = dayTasks;
+    d = addDays(d,1);
+    dayIdx++;
+  }
+  // exam day marker for PMP at end date
+  const pmpExam = parseISO(store.examDates.PMP);
+  const pmpIso = fmtISO(pmpExam);
+  if(store.tasks[pmpIso]){
+    store.tasks[pmpIso].push(mkTask('🎯 PMP EXAM DAY — Good luck!','PMP',false));
+  }
+}
+function mkTask(text,cert,done,resourceId){ return {id:uid(), text, cert, done, resourceId: resourceId||null}; }
+
+function seedDefaultResources(){
+  store.resources = [
+    {id:uid(), name:'Scrum Guide (2020)', cert:'PSPO', type:'doc', done:false, link:'https://scrumguides.org'},
+    {id:uid(), name:'PMBOK Guide 7th Edition', cert:'PMP', type:'doc', done:false, link:''},
+    {id:uid(), name:'Agile Practice Guide', cert:'PMP', type:'doc', done:false, link:''},
+    {id:uid(), name:'ECO - Exam Content Outline', cert:'PMP', type:'doc', done:false, link:''},
+    {id:uid(), name:'Andrew Ramdayal - PMP Course', cert:'PMP', type:'video', done:false, link:''},
+    {id:uid(), name:'David McLachlan - PSPO/Agile', cert:'PSPO', type:'video', done:false, link:''},
+    {id:uid(), name:'Scrum.org Learning Path', cert:'PSPO', type:'course', done:false, link:'https://www.scrum.org/learning-series'}
+  ];
+}
+
+/* ================================================================
+   THEME COLORS FOR CANVAS (reads CSS vars)
+================================================================= */
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function chartColors(){
+  return {
+    text: cssVar('--text-1'), text2: cssVar('--text-2'), grid: cssVar('--grid-line'),
+    accent: cssVar('--accent'), accent2: cssVar('--accent-2'),
+    pspo: cssVar('--pspo'), pmp: cssVar('--pmp'),
+    green: cssVar('--green'), yellow: cssVar('--yellow'), red: cssVar('--red')
+  };
+}
+
+/* ================================================================
+   NAVIGATION
+================================================================= */
+const viewTitles = {
+  dashboard:['Executive Dashboard','Tổng quan hành trình chinh phục PSPO & PMP'],
+  calendar:['Learning Calendar', `Timeline 17/07/2026 → 15/01/2027`],
+  resources:['Resource Library','Tài liệu và khoá học chính thức'],
+  mockexam:['Mock Exam Analytics','Theo dõi điểm số và điểm yếu qua từng lần thi thử'],
+  planner:['Daily Planner','Kế hoạch học tập theo từng ngày'],
+  analytics:['Analytics','Số liệu tổng hợp toàn bộ quá trình học'],
+  errorlog:['Error Log','Ghi nhận & phân tích các câu hỏi làm sai']
+};
+
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item[data-view]').forEach(n=>n.classList.toggle('active', n.dataset.view===name));
+  document.getElementById('pageTitle').textContent = viewTitles[name][0];
+  document.getElementById('pageSub').textContent = viewTitles[name][1];
+  closeSidebarMobile();
+  renderView(name);
+}
+
+function renderView(name){
+  if(name==='dashboard') renderDashboard();
+  else if(name==='calendar') renderCalendar();
+  else if(name==='resources') renderResources();
+  else if(name==='mockexam') renderMockExam();
+  else if(name==='planner') renderPlanner();
+  else if(name==='analytics') renderAnalytics();
+  else if(name==='errorlog') renderErrorLog();
+}
+
+document.querySelectorAll('.nav-item[data-view]').forEach(n=>{
+  n.addEventListener('click', ()=>switchView(n.dataset.view));
+});
+
+/* mobile sidebar */
+const sidebarEl = document.getElementById('sidebar');
+const overlayBg = document.getElementById('overlayBg');
+document.getElementById('hamburger').addEventListener('click', ()=>{
+  sidebarEl.classList.toggle('open'); overlayBg.classList.toggle('show');
+});
+overlayBg.addEventListener('click', closeSidebarMobile);
+function closeSidebarMobile(){ sidebarEl.classList.remove('open'); overlayBg.classList.remove('show'); }
+
+/* theme */
+const themeSwitch = document.getElementById('themeSwitch');
+themeSwitch.addEventListener('click', ()=>{
+  store.theme = store.theme==='dark' ? 'light' : 'dark';
+  applyTheme(); saveStore(); renderView(currentView());
+});
+function applyTheme(){
+  document.body.setAttribute('data-theme', store.theme);
+  themeSwitch.classList.toggle('on', store.theme==='dark');
+}
+function currentView(){
+  const active = document.querySelector('.nav-item.active[data-view]');
+  return active ? active.dataset.view : 'dashboard';
+}
+
+/* export / reset */
+document.getElementById('btnExportData').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(store,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mission-control-data.json';
+  a.click();
+});
+document.getElementById('btnResetData').addEventListener('click', ()=>{
+  if(confirm('Reset toàn bộ dữ liệu về mặc định? Hành động này không thể hoàn tác.')){
+    localStorage.removeItem(LS_KEY);
+    loadStore(); applyTheme(); refreshTopCountdown(); renderView(currentView());
+  }
+});
+
+/* ================================================================
+   SVG PROGRESS RING
+================================================================= */
+function progressRing(svgEl, pct, size, stroke, color, bgColor){
+  const r = (size/2) - stroke;
+  const c = 2*Math.PI*r;
+  const off = c * (1 - Math.max(0,Math.min(100,pct))/100);
+  svgEl.setAttribute('width', size); svgEl.setAttribute('height', size);
+  svgEl.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  svgEl.innerHTML = `
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${bgColor}" stroke-width="${stroke}"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" stroke-linecap="round"
+      transform="rotate(-90 ${size/2} ${size/2})" style="transition:stroke-dashoffset .6s ease"/>
+  `;
+}
+
+/* ================================================================
+   COMPUTATION HELPERS
+================================================================= */
+function allTasksFlat(){
+  const out = [];
+  for(const iso in store.tasks){ store.tasks[iso].forEach(t=>out.push({...t, date:iso})); }
+  return out;
+}
+function certStats(cert){
+  const flat = allTasksFlat().filter(t=>t.cert===cert);
+  const done = flat.filter(t=>t.done).length;
+  return {total:flat.length, done, pct: flat.length? Math.round(done/flat.length*100):0};
+}
+function overallStats(){
+  const flat = allTasksFlat();
+  const done = flat.filter(t=>t.done).length;
+  return {total:flat.length, done, pct: flat.length? Math.round(done/flat.length*100):0};
+}
+function computeStreak(){
+  const dates = Object.keys(store.studyLog).filter(d=>store.studyLog[d].hours>0).sort();
+  if(dates.length===0) return 0;
+  const set = new Set(dates);
+  let streak=0; let cur = new Date();
+  // count backward from today (or from latest logged day if today has none)
+  let d = new Date();
+  while(true){
+    const iso = fmtISO(d);
+    if(set.has(iso)){ streak++; d = addDays(d,-1); }
+    else if(fmtISO(d)===fmtISO(new Date())){ d=addDays(d,-1); continue; } // allow today to be empty still
+    else break;
+  }
+  return streak;
+}
+function weeklyVelocity(){
+  // tasks completed in last 7 days based on done flag + we approximate using studyLog days presence
+  // Since tasks don't store completion date explicitly, approximate via count of done tasks whose date within last 7 days of "today" mapped to schedule date
+  const today = new Date();
+  const from = addDays(today,-6);
+  let count=0, days=0;
+  for(let i=0;i<7;i++){
+    const d = addDays(from,i);
+    const iso = fmtISO(d);
+    if(store.tasks[iso]){
+      count += store.tasks[iso].filter(t=>t.done).length;
+    }
+    if(store.studyLog[iso] && store.studyLog[iso].hours>0) days++;
+  }
+  return {count, perDay:(count/7).toFixed(1)};
+}
+function riskLevel(){
+  const today = new Date();
+  const overallPct = overallStats().pct;
+  const totalDays = dayDiff(END_DATE, START_DATE)+1;
+  const elapsed = Math.max(0, Math.min(totalDays, dayDiff(today, START_DATE)+1));
+  const expectedPct = Math.round((elapsed/totalDays)*100);
+  const gap = expectedPct - overallPct;
+  if(gap <= 3) return {level:'green', label:'ON TRACK', detail:`Bạn đang đúng tiến độ (thực tế ${overallPct}% / kỳ vọng ${expectedPct}%).`};
+  if(gap <= 12) return {level:'yellow', label:'AT RISK', detail:`Bạn đang chậm nhẹ ${gap}% so với kế hoạch (${overallPct}% / kỳ vọng ${expectedPct}%). Cần tăng tốc.`};
+  return {level:'red', label:'BEHIND', detail:`Bạn đang chậm ${gap}% so với kế hoạch (${overallPct}% / kỳ vọng ${expectedPct}%). Cần điều chỉnh gấp!`};
+}
+
+/* ================================================================
+   CANVAS CHART HELPERS (no external libs)
+================================================================= */
+function setupCanvas(canvas){
+  const parent = canvas.parentElement;
+  const cssH = canvas.getAttribute('height') || 200;
+  const w = parent.clientWidth;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w*dpr; canvas.height = cssH*dpr;
+  canvas.style.width = w+'px'; canvas.style.height = cssH+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  return {ctx, w, h:+cssH};
+}
+
+function drawLineChart(canvas, series, opts={}){
+  // series: [{label, color, points:[{x_label, y}]}]
+  const {ctx,w,h} = setupCanvas(canvas);
+  const C = chartColors();
+  ctx.clearRect(0,0,w,h);
+  const padL=38, padR=14, padT=14, padB=26;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+  let maxY = opts.maxY;
+  if(maxY===undefined){
+    maxY = 1;
+    series.forEach(s=>s.points.forEach(p=>{ if(p.y>maxY) maxY=p.y; }));
+    maxY = Math.ceil(maxY*1.15);
+  }
+  const minY = opts.minY||0;
+  const n = series[0] ? series[0].points.length : 0;
+  // grid
+  ctx.strokeStyle = C.grid; ctx.lineWidth=1; ctx.font='10px var(--font-mono)'; ctx.fillStyle=C.text2;
+  const rows=4;
+  for(let i=0;i<=rows;i++){
+    const y = padT + plotH*(i/rows);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    const val = Math.round(maxY - (maxY-minY)*(i/rows));
+    ctx.fillText(val, 2, y+3);
+  }
+  function xPos(i){ return n<=1 ? padL : padL + plotW*(i/(n-1)); }
+  function yPos(v){ return padT + plotH*(1-( (v-minY)/(maxY-minY || 1) )); }
+  // x labels (sparse)
+  if(n>0){
+    const step = Math.max(1, Math.round(n/6));
+    ctx.fillStyle=C.text2;
+    for(let i=0;i<n;i+=step){
+      ctx.fillText(series[0].points[i].x_label, xPos(i)-10, h-8);
+    }
+  }
+  series.forEach(s=>{
+    ctx.beginPath();
+    s.points.forEach((p,i)=>{
+      const x=xPos(i), y=yPos(p.y);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = s.color; ctx.lineWidth = s.dashed?1.5:2.2;
+    if(s.dashed) ctx.setLineDash([5,4]); else ctx.setLineDash([]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if(s.fill){
+      ctx.lineTo(xPos(s.points.length-1), padT+plotH);
+      ctx.lineTo(xPos(0), padT+plotH);
+      ctx.closePath();
+      ctx.fillStyle = s.color+'22';
+      ctx.fill();
+    }
+  });
+}
+
+function drawBarChart(canvas, labels, values, colorFn, opts={}){
+  const {ctx,w,h} = setupCanvas(canvas);
+  const C = chartColors();
+  ctx.clearRect(0,0,w,h);
+  const padL=34, padR=10, padT=14, padB=24;
+  const plotW=w-padL-padR, plotH=h-padT-padB;
+  const maxV = opts.maxY || Math.max(1, ...values)*1.2;
+  ctx.strokeStyle=C.grid; ctx.font='10px var(--font-mono)'; ctx.fillStyle=C.text2;
+  const rows=4;
+  for(let i=0;i<=rows;i++){
+    const y=padT+plotH*(i/rows);
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    ctx.fillText(Math.round(maxV-(maxV*(i/rows))), 2, y+3);
+  }
+  const bw = plotW/labels.length*0.55;
+  labels.forEach((lb,i)=>{
+    const cx = padL + plotW*((i+0.5)/labels.length);
+    const val = values[i];
+    const bh = plotH*(val/maxV);
+    const x = cx-bw/2, y = padT+plotH-bh;
+    const grad = ctx.createLinearGradient(0,y,0,padT+plotH);
+    const col = typeof colorFn==='function'? colorFn(i,val) : colorFn;
+    grad.addColorStop(0,col); grad.addColorStop(1,col+'55');
+    ctx.fillStyle = grad;
+    roundRectPath(ctx,x,y,bw,Math.max(bh,2),4);
+    ctx.fill();
+    ctx.fillStyle=C.text2; ctx.font='9.5px var(--font-mono)';
+    ctx.textAlign='center';
+    ctx.fillText(lb, cx, h-8);
+    ctx.textAlign='left';
+  });
+}
+function roundRectPath(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+function drawRadarChart(canvas, labels, datasets){
+  // datasets: [{label,color,values:[0..100]}]
+  const {ctx,w,h} = setupCanvas(canvas);
+  const C = chartColors();
+  ctx.clearRect(0,0,w,h);
+  const cx=w/2, cy=h/2+6, radius=Math.min(w,h)/2-34;
+  const n = labels.length;
+  ctx.strokeStyle=C.grid; ctx.fillStyle=C.text2; ctx.font='10px var(--font-mono)';
+  const levels=4;
+  for(let l=1;l<=levels;l++){
+    ctx.beginPath();
+    for(let i=0;i<n;i++){
+      const ang = -Math.PI/2 + i*(2*Math.PI/n);
+      const r = radius*(l/levels);
+      const x = cx+r*Math.cos(ang), y=cy+r*Math.sin(ang);
+      i===0? ctx.moveTo(x,y): ctx.lineTo(x,y);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
+  for(let i=0;i<n;i++){
+    const ang = -Math.PI/2 + i*(2*Math.PI/n);
+    const x=cx+radius*Math.cos(ang), y=cy+radius*Math.sin(ang);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(x,y); ctx.strokeStyle=C.grid; ctx.stroke();
+    const lx = cx+(radius+14)*Math.cos(ang), ly=cy+(radius+14)*Math.sin(ang);
+    ctx.fillStyle=C.text2;
+    ctx.textAlign = Math.cos(ang)>0.3?'left':(Math.cos(ang)<-0.3?'right':'center');
+    const words = labels[i].split(' ');
+    ctx.fillText(labels[i].length>16? (words[0]+' '+(words[1]||'')):labels[i], lx, ly);
+  }
+  ctx.textAlign='left';
+  datasets.forEach(ds=>{
+    ctx.beginPath();
+    ds.values.forEach((v,i)=>{
+      const ang=-Math.PI/2+i*(2*Math.PI/n);
+      const r = radius*(Math.max(0,Math.min(100,v))/100);
+      const x=cx+r*Math.cos(ang), y=cy+r*Math.sin(ang);
+      i===0? ctx.moveTo(x,y): ctx.lineTo(x,y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = ds.color+'33'; ctx.fill();
+    ctx.strokeStyle = ds.color; ctx.lineWidth=2; ctx.stroke();
+    ds.values.forEach((v,i)=>{
+      const ang=-Math.PI/2+i*(2*Math.PI/n);
+      const r = radius*(Math.max(0,Math.min(100,v))/100);
+      const x=cx+r*Math.cos(ang), y=cy+r*Math.sin(ang);
+      ctx.beginPath(); ctx.arc(x,y,2.6,0,7); ctx.fillStyle=ds.color; ctx.fill();
+    });
+  });
+}
+
+/* ================================================================
+   DASHBOARD
+================================================================= */
+function refreshTopCountdown(){
+  const today = new Date();
+  const dp = dayDiff(parseISO(store.examDates.PSPO), today);
+  const dm = dayDiff(parseISO(store.examDates.PMP), today);
+  document.getElementById('pspoCountdownTag').textContent = `PSPO ${dp>=0? dp+'d':'done'}`;
+  document.getElementById('pmpCountdownTag').textContent = `PMP ${dm>=0? dm+'d':'done'}`;
+}
+
+function renderDashboard(){
+  refreshTopCountdown();
+  const C = chartColors();
+  const overall = overallStats();
+  progressRing(document.getElementById('ringOverall'), overall.pct, 66, 7, C.accent, C.grid);
+  document.getElementById('overallPct').textContent = overall.pct+'%';
+  document.getElementById('overallSub').textContent = `${overall.done} / ${overall.total} tasks`;
+
+  const streak = computeStreak();
+  document.getElementById('streakVal').textContent = `${streak} ngày 🔥`;
+  document.getElementById('streakSub').textContent = streak>0 ? 'Duy trì streak nhé!' : 'Học hôm nay để bắt đầu streak';
+
+  const vel = weeklyVelocity();
+  document.getElementById('velocityVal').textContent = vel.perDay;
+  document.getElementById('velocitySub').textContent = `${vel.count} task / 7 ngày gần nhất`;
+
+  const risk = riskLevel();
+  const pill = document.getElementById('riskPill');
+  pill.className = 'risk-pill risk-'+risk.level;
+  pill.innerHTML = `<span class="dot"></span> ${risk.label}`;
+  document.getElementById('riskSub').textContent = risk.detail;
+
+  const pspo = certStats('PSPO'), pmp = certStats('PMP');
+  progressRing(document.getElementById('ringPspo'), pspo.pct, 90, 8, C.pspo, C.grid);
+  progressRing(document.getElementById('ringPmp'), pmp.pct, 90, 8, C.pmp, C.grid);
+  document.getElementById('pspoPct').textContent = pspo.pct+'%';
+  document.getElementById('pspoSub').textContent = `${pspo.done} / ${pspo.total} tasks hoàn thành`;
+  document.getElementById('pmpPct').textContent = pmp.pct+'%';
+  document.getElementById('pmpSub').textContent = `${pmp.done} / ${pmp.total} tasks hoàn thành`;
+  document.getElementById('pspoExamDateLabel').textContent = 'Ngày thi: '+fmtVN(parseISO(store.examDates.PSPO));
+  document.getElementById('pmpExamDateLabel').textContent = 'Ngày thi: '+fmtVN(parseISO(store.examDates.PMP));
+  const dP = dayDiff(parseISO(store.examDates.PSPO), new Date());
+  const dM = dayDiff(parseISO(store.examDates.PMP), new Date());
+  document.getElementById('pspoCountdownFull').textContent = (dP>=0? dP+' ngày còn lại':'Đã qua ngày thi');
+  document.getElementById('pmpCountdownFull').textContent = (dM>=0? dM+' ngày còn lại':'Đã qua ngày thi');
+
+  // Burn up/down chart across full range
+  const allDates = [];
+  let d = new Date(START_DATE);
+  while(d<=END_DATE){ allDates.push(new Date(d)); d=addDays(d,1); }
+  const totalTasks = allTasksFlat().length;
+  let cum=0;
+  const burnUp=[], burnDown=[], ideal=[];
+  const today = new Date();
+  allDates.forEach((dt,i)=>{
+    const iso = fmtISO(dt);
+    if(dt<=today && store.tasks[iso]) cum += store.tasks[iso].filter(t=>t.done).length;
+    burnUp.push({x_label: fmtShort(dt), y: cum});
+    burnDown.push({x_label: fmtShort(dt), y: Math.max(0,totalTasks-cum)});
+    ideal.push({x_label: fmtShort(dt), y: Math.round(totalTasks*(i/(allDates.length-1)))});
+  });
+  drawLineChart(document.getElementById('chartBurn'), [
+    {label:'Ideal', color:C.text2, points:ideal, dashed:true},
+    {label:'Burn-down', color:C.red, points:burnDown},
+    {label:'Burn-up', color:C.accent, points:burnUp, fill:true}
+  ], {maxY: totalTasks*1.1});
+
+  // weekly KPI (last 8 weeks incl current, aligned to START_DATE)
+  const weekLabels=[], weekDone=[], weekHours=[];
+  for(let w=7;w>=0;w--){
+    const wkStart = addDays(today, -today.getDay()-7*w);
+    let done=0, hrs=0;
+    for(let i=0;i<7;i++){
+      const iso = fmtISO(addDays(wkStart,i));
+      if(store.tasks[iso]) done += store.tasks[iso].filter(t=>t.done).length;
+      if(store.studyLog[iso]) hrs += (store.studyLog[iso].hours||0);
+    }
+    weekLabels.push(fmtShort(wkStart));
+    weekDone.push(done); weekHours.push(+hrs.toFixed(1));
+  }
+  drawBarChart(document.getElementById('chartWeeklyKpi'), weekLabels, weekDone, C.accent);
+  drawBarChart(document.getElementById('chartWeeklyHours'), weekLabels, weekHours, C.pspo);
+}
+
+/* ================================================================
+   CALENDAR
+================================================================= */
+let calCursor = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), 1);
+document.getElementById('calPrev').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()-1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', ()=>{ calCursor.setMonth(calCursor.getMonth()+1); renderCalendar(); });
+document.getElementById('calToday').addEventListener('click', ()=>{ calCursor = new Date(new Date().getFullYear(), new Date().getMonth(),1); renderCalendar(); });
+document.querySelectorAll('.filter-chip').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    store.calFilter = c.dataset.filter; saveStore();
+    document.querySelectorAll('.filter-chip').forEach(x=>x.className='filter-chip');
+    c.className = 'filter-chip active-'+(c.dataset.filter==='all'?'all':c.dataset.filter.toLowerCase());
+    renderCalendar();
+  });
+});
+
+const DOW_VN = ['CN','T2','T3','T4','T5','T6','T7'];
+function renderCalendar(){
+  document.getElementById('calMonthLabel').textContent = calCursor.toLocaleDateString('vi-VN',{month:'long', year:'numeric'});
+  const dowWrap = document.getElementById('calDow');
+  dowWrap.innerHTML = DOW_VN.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML='';
+  const firstOfMonth = new Date(calCursor.getFullYear(), calCursor.getMonth(),1);
+  const startOffset = firstOfMonth.getDay();
+  const daysInMonth = new Date(calCursor.getFullYear(), calCursor.getMonth()+1,0).getDate();
+  const todayIso = fmtISO(new Date());
+
+  for(let i=0;i<startOffset;i++){ grid.appendChild(el('div','cal-cell empty')); }
+  for(let day=1; day<=daysInMonth; day++){
+    const dt = new Date(calCursor.getFullYear(), calCursor.getMonth(), day);
+    const iso = fmtISO(dt);
+    const cell = el('div','cal-cell');
+    cell.dataset.date = iso;
+    if(iso===todayIso) cell.classList.add('today');
+    if(iso===store.examDates.PSPO || iso===store.examDates.PMP) cell.classList.add('exam-day');
+    if(dt<START_DATE || dt>END_DATE){ cell.style.opacity='0.35'; }
+
+    const tasks = (store.tasks[iso]||[]).filter(t=> store.calFilter==='all' || t.cert===store.calFilter);
+    const doneCt = tasks.filter(t=>t.done).length;
+    const pct = tasks.length? Math.round(doneCt/tasks.length*100):0;
+
+    const row = el('div','cal-date-row');
+    row.appendChild(el('div','cal-date-num', String(day)));
+    const miniSvg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    miniSvg.setAttribute('class','cal-progress-mini');
+    row.appendChild(miniSvg);
+    cell.appendChild(row);
+
+    const taskWrap = el('div','cal-tasks');
+    tasks.slice(0,3).forEach(t=>{
+      const chip = el('div', 'cal-task-chip c-'+t.cert.toLowerCase()+(t.done?' done':''), t.text);
+      taskWrap.appendChild(chip);
+    });
+    if(tasks.length>3) taskWrap.appendChild(el('div','cal-more', `+${tasks.length-3} khác`));
+    cell.appendChild(taskWrap);
+    grid.appendChild(cell);
+
+    setTimeout(()=>{ const C=chartColors(); progressRing(miniSvg, pct, 22, 3, tasks.length? (pct===100?C.green:C.accent):C.grid, C.grid); },0);
+
+    cell.addEventListener('click', ()=>openDayModal(iso));
+    // drag & drop target
+    cell.addEventListener('dragover', e=>{ e.preventDefault(); cell.classList.add('drag-over'); });
+    cell.addEventListener('dragleave', ()=> cell.classList.remove('drag-over'));
+    cell.addEventListener('drop', e=>{
+      e.preventDefault(); cell.classList.remove('drag-over');
+      const data = e.dataTransfer.getData('text/plain');
+      if(!data) return;
+      const [fromIso, taskId] = data.split('::');
+      if(fromIso===iso) return;
+      moveTask(fromIso, iso, taskId);
+      renderCalendar();
+    });
+  }
+  saveStore();
+}
+function el(tag, className, text){ const e=document.createElement(tag); if(className) e.className=className; if(text!==undefined) e.textContent=text; return e; }
+
+function moveTask(fromIso, toIso, taskId){
+  const arr = store.tasks[fromIso]||[];
+  const idx = arr.findIndex(t=>t.id===taskId);
+  if(idx<0) return;
+  const [task] = arr.splice(idx,1);
+  if(!store.tasks[toIso]) store.tasks[toIso]=[];
+  store.tasks[toIso].push(task);
+  saveStore();
+}
+
+/* ---- day modal ---- */
+const dayModalBackdrop = document.getElementById('dayModalBackdrop');
+let dayModalDate = null;
+function openDayModal(iso){
+  dayModalDate = iso;
+  const dt = parseISO(iso);
+  document.getElementById('dayModalTitle').textContent = fmtVN(dt);
+  document.getElementById('dayModalSub').textContent = (iso===store.examDates.PSPO?'🎯 Ngày thi PSPO':'') + (iso===store.examDates.PMP?'🎯 Ngày thi PMP':'');
+  renderDayModalTasks();
+  dayModalBackdrop.classList.add('open');
+}
+document.getElementById('dayModalClose').addEventListener('click', ()=>{ dayModalBackdrop.classList.remove('open'); renderCalendar(); });
+dayModalBackdrop.addEventListener('click', e=>{ if(e.target===dayModalBackdrop){ dayModalBackdrop.classList.remove('open'); renderCalendar(); } });
+
+function renderDayModalTasks(){
+  const wrap = document.getElementById('dayModalTaskList');
+  wrap.innerHTML='';
+  const tasks = store.tasks[dayModalDate]||[];
+  if(tasks.length===0) wrap.appendChild(el('div','empty-state','Chưa có task nào cho ngày này.'));
+  tasks.forEach(t=>{
+    const row = buildTaskRow(t, dayModalDate, renderDayModalTasks);
+    wrap.appendChild(row);
+  });
+}
+document.getElementById('dayModalAddBtn').addEventListener('click', ()=>{
+  const txt = document.getElementById('dayModalNewTaskText').value.trim();
+  const cert = document.getElementById('dayModalNewTaskCert').value;
+  if(!txt) return;
+  if(!store.tasks[dayModalDate]) store.tasks[dayModalDate]=[];
+  store.tasks[dayModalDate].push(mkTask(txt,cert,false));
+  saveStore();
+  document.getElementById('dayModalNewTaskText').value='';
+  renderDayModalTasks();
+});
+
+function buildTaskRow(t, iso, refreshFn){
+  const row = el('div','task-row'+(t.done?' done':'')+(t.resourceId?' has-link':''));
+  row.draggable = true;
+  row.addEventListener('dragstart', e=>{ e.dataTransfer.setData('text/plain', iso+'::'+t.id); });
+  const check = el('div','task-check'+(t.done?' checked':''));
+  check.innerHTML = t.done? '✓':'';
+  check.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    t.done = !t.done; saveStore(); refreshFn(); renderView(currentView());
+  });
+  row.appendChild(check);
+  const txt = el('div','task-text', t.text);
+  txt.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const linkedRes = t.resourceId ? store.resources.find(r=>r.id===t.resourceId) : null;
+    if(linkedRes){
+      if(linkedRes.link){ window.open(linkedRes.link, '_blank'); }
+      else { alert('Task này đã liên kết tài liệu:\n\n"'+linkedRes.name+'"\n\n(chưa có link — bạn có thể thêm link trong Resource Library).'); }
+    } else {
+      startEditTask(txt, t, iso, refreshFn, row);
+    }
+  });
+  txt.title = 'Click để mở tài liệu liên kết (nếu có), hoặc sửa nếu chưa liên kết';
+  row.appendChild(txt);
+
+  const controls = el('div','task-controls');
+
+  const tag = el('span','tag tag-'+t.cert.toLowerCase(), t.cert);
+  controls.appendChild(tag);
+
+  const resSelect = document.createElement('select');
+  resSelect.className = 'task-res-select';
+  resSelect.title = 'Liên kết tài liệu trong Resource Library';
+  const optNone = document.createElement('option');
+  optNone.value=''; optNone.textContent='🔗 Liên kết...';
+  resSelect.appendChild(optNone);
+  store.resources.filter(r=> r.cert===t.cert || r.cert==='Both').forEach(r=>{
+    const o = document.createElement('option');
+    o.value = r.id; o.textContent = r.name;
+    if(r.id === t.resourceId) o.selected = true;
+    resSelect.appendChild(o);
+  });
+  if(!t.resourceId) optNone.selected = true;
+  resSelect.addEventListener('click', e=> e.stopPropagation());
+  resSelect.addEventListener('mousedown', e=> e.stopPropagation());
+  resSelect.addEventListener('change', ()=>{
+    t.resourceId = resSelect.value || null;
+    saveStore(); refreshFn(); renderView(currentView());
+  });
+  controls.appendChild(resSelect);
+
+  const linkedRes = t.resourceId ? store.resources.find(r=>r.id===t.resourceId) : null;
+  if(linkedRes && linkedRes.link){
+    const openA = document.createElement('a');
+    openA.href = linkedRes.link; openA.target='_blank'; openA.className='task-link-open';
+    openA.textContent = '↗'; openA.title = 'Mở: '+linkedRes.name;
+    openA.addEventListener('click', e=> e.stopPropagation());
+    controls.appendChild(openA);
+  }
+
+  const editBtn = el('div','task-edit-btn','✎');
+  editBtn.title = 'Sửa nội dung task';
+  editBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    startEditTask(txt, t, iso, refreshFn, row);
+  });
+  controls.appendChild(editBtn);
+
+  const del = el('div','task-del','✕');
+  del.addEventListener('click', ()=>{
+    store.tasks[iso] = store.tasks[iso].filter(x=>x.id!==t.id);
+    saveStore(); refreshFn(); renderCalendar();
+  });
+  controls.appendChild(del);
+
+  row.appendChild(controls);
+
+  row.addEventListener('click', ()=>{
+    const linkedRes = t.resourceId ? store.resources.find(r=>r.id===t.resourceId) : null;
+    if(linkedRes){
+      if(linkedRes.link){ window.open(linkedRes.link, '_blank'); }
+      else { alert('Task này đã liên kết tài liệu:\n\n"'+linkedRes.name+'"\n\n(chưa có link — bạn có thể thêm link trong Resource Library).'); }
+    } else {
+      startEditTask(txt, t, iso, refreshFn, row);
+    }
+  });
+
+  return row;
+}
+
+function startEditTask(txtEl, t, iso, refreshFn, row){
+  row.draggable = false;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = t.text;
+  input.className = 'task-edit-input';
+  input.style.flex = '1';
+  input.style.fontSize = '13px';
+  input.style.padding = '4px 7px';
+  txtEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let committed = false;
+  function commit(){
+    if(committed) return;
+    committed = true;
+    const newVal = input.value.trim();
+    if(newVal) t.text = newVal;
+    saveStore();
+    refreshFn();
+    renderView(currentView());
+  }
+  input.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); input.blur(); }
+    if(e.key==='Escape'){ committed = true; refreshFn(); }
+  });
+  input.addEventListener('blur', commit);
+  input.addEventListener('click', e=> e.stopPropagation());
+  input.addEventListener('dragstart', e=> e.stopPropagation());
+}
+
+/* ================================================================
+   RESOURCES
+================================================================= */
+const resIcons = {
+  doc:`<svg class="icon" viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5v-18Z"/></svg>`,
+  video:`<svg class="icon" viewBox="0 0 24 24"><rect x="2" y="4" width="15" height="16" rx="2"/><path d="M17 9l5-3v12l-5-3"/></svg>`,
+  course:`<svg class="icon" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg>`
+};
+function renderResources(){
+  const grid = document.getElementById('resourceGrid');
+  grid.innerHTML='';
+  store.resources.forEach(r=>{
+    const card = el('div','glass res-card');
+    const top = el('div','res-top');
+    const iconWrap = el('div','res-icon');
+    iconWrap.style.background = r.cert==='PMP'? 'rgba(242,179,61,.14)': r.cert==='PSPO'?'rgba(47,214,176,.14)':'rgba(91,140,255,.14)';
+    iconWrap.style.color = r.cert==='PMP'? 'var(--pmp)': r.cert==='PSPO'?'var(--pspo)':'var(--accent)';
+    iconWrap.innerHTML = resIcons[r.type]||resIcons.doc;
+    top.appendChild(iconWrap);
+    const check = el('div','task-check'+(r.done?' checked':''));
+    check.innerHTML = r.done?'✓':'';
+    check.style.marginLeft='auto';
+    check.addEventListener('click', ()=>{ r.done=!r.done; saveStore(); renderResources(); });
+    top.appendChild(check);
+    card.appendChild(top);
+    card.appendChild(el('div','res-title', r.name));
+    const meta = el('div','res-meta', (r.cert)+' · '+({doc:'Tài liệu',video:'Video',course:'Khoá học'}[r.type]||''));
+    card.appendChild(meta);
+
+    const linkedTasks = allTasksFlat().filter(t=>t.resourceId===r.id);
+    if(linkedTasks.length>0){
+      const doneCt = linkedTasks.filter(t=>t.done).length;
+      const pct = Math.round(doneCt/linkedTasks.length*100);
+      const barBg = el('div','res-progress-bar');
+      const barFill = el('div','res-progress-fill');
+      barFill.style.width = pct+'%';
+      barFill.style.background = r.cert==='PMP'?'var(--pmp)':r.cert==='PSPO'?'var(--pspo)':'var(--accent)';
+      barBg.appendChild(barFill);
+      card.appendChild(barBg);
+      card.appendChild(el('div','small', `🔗 ${doneCt}/${linkedTasks.length} task học liên quan đã hoàn thành`));
+    }
+
+    if(r.link){
+      const a = document.createElement('a');
+      a.href = r.link; a.target='_blank'; a.className='small'; a.textContent='Mở liên kết ↗'; a.style.color='var(--accent)';
+      card.appendChild(a);
+    }
+    const footer = el('div','res-footer');
+    footer.appendChild(el('span', null, r.done? 'Hoàn thành ✅':'Đang học'));
+    const del = el('span','el-del','Xoá');
+    del.addEventListener('click', ()=>{ store.resources = store.resources.filter(x=>x.id!==r.id); saveStore(); renderResources(); });
+    footer.appendChild(del);
+    card.appendChild(footer);
+    grid.appendChild(card);
+  });
+}
+document.getElementById('btnAddResource').addEventListener('click', ()=>{
+  document.getElementById('resModalBackdrop').classList.add('open');
+});
+document.getElementById('resModalClose').addEventListener('click', ()=> document.getElementById('resModalBackdrop').classList.remove('open'));
+document.getElementById('resSaveBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('resNameInput').value.trim();
+  if(!name) return;
+  store.resources.push({
+    id:uid(), name,
+    cert: document.getElementById('resCertInput').value,
+    type: document.getElementById('resTypeInput').value,
+    link: document.getElementById('resLinkInput').value.trim(),
+    done:false
+  });
+  saveStore();
+  document.getElementById('resNameInput').value=''; document.getElementById('resLinkInput').value='';
+  document.getElementById('resModalBackdrop').classList.remove('open');
+  renderResources();
+});
+
+/* ================================================================
+   MOCK EXAM ANALYTICS
+================================================================= */
+function domainsFor(cert){ return cert==='PSPO'? PSPO_DOMAINS : PMP_DOMAINS; }
+function renderExamDomainInputs(){
+  const cert = document.getElementById('examCertSelect').value;
+  const wrap = document.getElementById('examDomainInputs');
+  wrap.innerHTML = '<label style="margin-top:6px;">Điểm theo Domain (tuỳ chọn, %)</label>';
+  domainsFor(cert).forEach(dm=>{
+    const f = el('div','field');
+    f.style.marginBottom='6px';
+    const lb = el('label', null, dm); lb.style.marginBottom='2px';
+    const inp = document.createElement('input');
+    inp.type='number'; inp.min=0; inp.max=100; inp.dataset.domain=dm; inp.className='domain-score-input'; inp.placeholder='—';
+    f.appendChild(lb); f.appendChild(inp);
+    wrap.appendChild(f);
+  });
+}
+document.getElementById('examCertSelect').addEventListener('change', renderExamDomainInputs);
+
+document.getElementById('btnAddExam').addEventListener('click', ()=>{
+  const cert = document.getElementById('examCertSelect').value;
+  const date = document.getElementById('examDateInput').value || fmtISO(new Date());
+  const score = +document.getElementById('examScoreInput').value;
+  if(!score && score!==0){ alert('Nhập điểm tổng nhé.'); return; }
+  const domains = {};
+  document.querySelectorAll('.domain-score-input').forEach(inp=>{
+    if(inp.value!=='') domains[inp.dataset.domain] = +inp.value;
+  });
+  store.mockExams.push({id:uid(), date, cert, score, domains});
+  store.mockExams.sort((a,b)=> a.date.localeCompare(b.date));
+  saveStore();
+  document.getElementById('examScoreInput').value='';
+  renderMockExam();
+});
+
+function renderMockExam(){
+  renderExamDomainInputs();
+  const C = chartColors();
+
+  // history list
+  const histWrap = document.getElementById('examHistoryList');
+  histWrap.innerHTML='';
+  if(store.mockExams.length===0){
+    histWrap.appendChild(el('div','empty-state','Chưa có lần thi thử nào được ghi nhận.'));
+  } else {
+    [...store.mockExams].reverse().forEach(ex=>{
+      const row = el('div','exam-history-row');
+      row.appendChild(el('div', null, fmtShort(parseISO(ex.date))));
+      row.appendChild(el('span','tag tag-'+ex.cert.toLowerCase(), ex.cert));
+      const barBg = el('div','score-bar-bg');
+      const barFill = el('div','score-bar-fill');
+      barFill.style.width = ex.score+'%';
+      barFill.style.background = ex.score>=75? C.green : ex.score>=60? C.yellow : C.red;
+      barBg.appendChild(barFill);
+      row.appendChild(barBg);
+      row.appendChild(el('div', null, ex.score+'%'));
+      histWrap.appendChild(row);
+    });
+  }
+
+  // trend chart
+  const seriesMap = {PSPO:[], PMP:[]};
+  store.mockExams.forEach(ex=> seriesMap[ex.cert].push({x_label:fmtShort(parseISO(ex.date)), y:ex.score}));
+  const series = [];
+  if(seriesMap.PSPO.length) series.push({label:'PSPO', color:C.pspo, points:seriesMap.PSPO});
+  if(seriesMap.PMP.length) series.push({label:'PMP', color:C.pmp, points:seriesMap.PMP});
+  if(series.length===0) series.push({label:'—', color:C.text2, points:[{x_label:'',y:0}]});
+  drawLineChart(document.getElementById('chartExamTrend'), series, {maxY:100, minY:0});
+
+  // radar
+  const radarCert = document.getElementById('radarCertSelect').value;
+  const dms = domainsFor(radarCert);
+  const avgVals = dms.map(dm=>{
+    const vals = store.mockExams.filter(e=>e.cert===radarCert && e.domains && e.domains[dm]!==undefined).map(e=>e.domains[dm]);
+    return vals.length? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+  });
+  drawRadarChart(document.getElementById('chartRadar'), dms, [{label:radarCert, color: radarCert==='PSPO'?C.pspo:C.pmp, values:avgVals}]);
+
+  // heatmap of weak topics from error log
+  const heat = {};
+  store.errorLog.forEach(e=>{ heat[e.domain||'Khác'] = (heat[e.domain||'Khác']||0)+1; });
+  const heatGrid = document.getElementById('heatGrid');
+  heatGrid.innerHTML='';
+  const entries = Object.entries(heat).sort((a,b)=>b[1]-a[1]);
+  if(entries.length===0){ heatGrid.appendChild(el('div','empty-state','Chưa có dữ liệu Error Log.')); }
+  const maxCount = entries.length? entries[0][1] : 1;
+  entries.forEach(([domain,count])=>{
+    const intensity = count/maxCount;
+    const cell = el('div','heat-cell');
+    const color = intensity>0.66? C.red : intensity>0.33? C.yellow : C.green;
+    cell.style.background = color+'18';
+    cell.style.borderColor = color+'55';
+    cell.appendChild(el('div','hname', domain));
+    cell.appendChild(el('div','hcount', String(count)));
+    cell.appendChild(el('div','hlabel','LẦN SAI'));
+    heatGrid.appendChild(cell);
+  });
+}
+document.getElementById('radarCertSelect').addEventListener('change', renderMockExam);
+
+/* ================================================================
+   DAILY PLANNER
+================================================================= */
+let plannerDate = fmtISO(new Date() < START_DATE ? START_DATE : (new Date() > END_DATE ? END_DATE : new Date()));
+document.getElementById('plannerPrev').addEventListener('click', ()=>{ plannerDate = fmtISO(addDays(parseISO(plannerDate),-1)); renderPlanner(); });
+document.getElementById('plannerNext').addEventListener('click', ()=>{ plannerDate = fmtISO(addDays(parseISO(plannerDate),1)); renderPlanner(); });
+document.getElementById('plannerTodayBtn').addEventListener('click', ()=>{ plannerDate = fmtISO(new Date()); renderPlanner(); });
+
+function renderPlanner(){
+  const dt = parseISO(plannerDate);
+  document.getElementById('plannerDateBig').textContent = fmtVN(dt);
+  document.getElementById('plannerDateSub').textContent = `Ngày ${dayDiff(dt,START_DATE)+1} / ${dayDiff(END_DATE,START_DATE)+1}`;
+  const examTag = document.getElementById('plannerExamTag');
+  if(plannerDate===store.examDates.PSPO){ examTag.style.display='inline-flex'; examTag.className='tag tag-pspo'; examTag.textContent='🎯 PSPO EXAM DAY'; }
+  else if(plannerDate===store.examDates.PMP){ examTag.style.display='inline-flex'; examTag.className='tag tag-pmp'; examTag.textContent='🎯 PMP EXAM DAY'; }
+  else examTag.style.display='none';
+
+  const wrap = document.getElementById('plannerTaskList');
+  wrap.innerHTML='';
+  const tasks = store.tasks[plannerDate]||[];
+  if(tasks.length===0) wrap.appendChild(el('div','empty-state','Chưa có task nào — thêm task bên dưới.'));
+  tasks.forEach(t=> wrap.appendChild(buildTaskRow(t, plannerDate, renderPlanner)) );
+
+  const hours = (store.studyLog[plannerDate]||{}).hours || 0;
+  document.getElementById('plannerHoursSlider').value = hours;
+  document.getElementById('plannerHoursVal').textContent = hours+'h';
+  document.getElementById('plannerNoteInput').value = (store.studyLog[plannerDate]||{}).note || '';
+}
+document.getElementById('plannerAddTaskBtn').addEventListener('click', ()=>{
+  const txt = document.getElementById('plannerNewTaskText').value.trim();
+  const cert = document.getElementById('plannerNewTaskCert').value;
+  if(!txt) return;
+  if(!store.tasks[plannerDate]) store.tasks[plannerDate]=[];
+  store.tasks[plannerDate].push(mkTask(txt,cert,false));
+  saveStore();
+  document.getElementById('plannerNewTaskText').value='';
+  renderPlanner();
+});
+document.getElementById('plannerHoursSlider').addEventListener('input', e=>{
+  document.getElementById('plannerHoursVal').textContent = e.target.value+'h';
+});
+document.getElementById('plannerHoursSlider').addEventListener('change', e=>{
+  if(!store.studyLog[plannerDate]) store.studyLog[plannerDate]={hours:0,note:''};
+  store.studyLog[plannerDate].hours = +e.target.value;
+  saveStore();
+});
+document.getElementById('plannerNoteInput').addEventListener('change', e=>{
+  if(!store.studyLog[plannerDate]) store.studyLog[plannerDate]={hours:0,note:''};
+  store.studyLog[plannerDate].note = e.target.value;
+  saveStore();
+});
+
+/* ================================================================
+   ANALYTICS
+================================================================= */
+function renderAnalytics(){
+  const C = chartColors();
+  let totalHours=0, loggedDays=0;
+  for(const iso in store.studyLog){ totalHours += (store.studyLog[iso].hours||0); if(store.studyLog[iso].hours>0) loggedDays++; }
+  document.getElementById('anTotalHours').textContent = totalHours.toFixed(1)+'h';
+  document.getElementById('anAvgHours').textContent = (loggedDays? (totalHours/loggedDays):0).toFixed(1)+'h';
+
+  const allScores = store.mockExams.map(e=>e.score);
+  document.getElementById('anAvgScore').textContent = allScores.length? Math.round(allScores.reduce((a,b)=>a+b,0)/allScores.length)+'%' : '—';
+
+  // predicted pass rate: blend of avg recent score (60%) and completion% (40%)
+  const overall = overallStats();
+  const recentScores = allScores.slice(-5);
+  const avgRecent = recentScores.length? recentScores.reduce((a,b)=>a+b,0)/recentScores.length : null;
+  let passRate;
+  if(avgRecent!==null) passRate = Math.round(avgRecent*0.65 + overall.pct*0.35);
+  else passRate = Math.round(overall.pct*0.6);
+  const prEl = document.getElementById('anPassRate');
+  prEl.textContent = passRate+'%';
+  prEl.style.color = passRate>=75? C.green : passRate>=55? C.yellow : C.red;
+
+  // completion forecast
+  ['PSPO','PMP'].forEach(cert=>{
+    const stats = certStats(cert);
+    const remaining = stats.total - stats.done;
+    const vel = weeklyVelocity();
+    const perDay = Math.max(0.3, +vel.perDay);
+    const daysNeeded = Math.ceil(remaining/perDay);
+    const forecastDate = addDays(new Date(), daysNeeded);
+    document.getElementById(cert==='PSPO'?'forecastPspo':'forecastPmp').textContent =
+      remaining<=0 ? '✅ Hoàn thành' : `~${fmtVN(forecastDate)} (còn ${remaining} task)`;
+  });
+
+  // domain completion chart: use error log domains + mock exam domains as proxy weighting
+  const dms = [...PSPO_DOMAINS, ...PMP_DOMAINS];
+  const labels = dms.map(d=>d.length>14? d.slice(0,13)+'…':d);
+  const values = dms.map(dm=>{
+    const scores = store.mockExams.filter(e=>e.domains && e.domains[dm]!==undefined).map(e=>e.domains[dm]);
+    if(scores.length) return Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+    return overall.pct; // fallback proxy
+  });
+  drawBarChart(document.getElementById('chartDomainCompletion'), labels, values, (i)=> i<PSPO_DOMAINS.length? C.pspo : C.pmp, {maxY:100});
+}
+
+/* ================================================================
+   ERROR LOG
+================================================================= */
+function renderErrorLog(){
+  const body = document.getElementById('errorLogBody');
+  body.innerHTML='';
+  if(store.errorLog.length===0){
+    const tr = document.createElement('tr');
+    tr.className = 'el-empty-row';
+    const td = document.createElement('td'); td.colSpan=7; td.className='empty-state'; td.textContent='Chưa có câu sai nào được ghi lại.';
+    tr.appendChild(td); body.appendChild(tr); return;
+  }
+  [...store.errorLog].reverse().forEach(e=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td data-label="Date">${fmtShort(parseISO(e.date))}</td>
+      <td data-label="Certificate"><span class="tag tag-${e.cert.toLowerCase()}">${e.cert}</span></td>
+      <td data-label="Domain">${escapeHtml(e.domain)}</td>
+      <td data-label="Question">${escapeHtml(e.question)}</td>
+      <td data-label="Root Cause">${escapeHtml(e.root)}</td>
+      <td data-label="Action">${escapeHtml(e.action)}</td>
+      <td><span class="el-del">Xoá</span></td>
+    `;
+    tr.querySelector('.el-del').addEventListener('click', ()=>{
+      store.errorLog = store.errorLog.filter(x=>x.id!==e.id);
+      saveStore(); renderErrorLog();
+    });
+    body.appendChild(tr);
+  });
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+
+document.getElementById('btnAddError').addEventListener('click', ()=>{
+  const date = document.getElementById('elDate').value || fmtISO(new Date());
+  const cert = document.getElementById('elCert').value;
+  const domain = document.getElementById('elDomain').value.trim();
+  const question = document.getElementById('elQuestion').value.trim();
+  const root = document.getElementById('elRoot').value.trim();
+  const action = document.getElementById('elAction').value.trim();
+  if(!domain || !question){ alert('Nhập ít nhất Domain và Câu hỏi.'); return; }
+  store.errorLog.push({id:uid(), date, cert, domain, question, root, action});
+  saveStore();
+  ['elDomain','elQuestion','elRoot','elAction'].forEach(id=> document.getElementById(id).value='');
+  renderErrorLog();
+});
+
+/* ================================================================
+   INIT
+================================================================= */
+window.addEventListener('resize', ()=>{ renderView(currentView()); });
+
+loadStore();
+applyTheme();
+document.getElementById('examDateInput').value = fmtISO(new Date());
+document.getElementById('elDate').value = fmtISO(new Date());
+renderExamDomainInputs();
+switchView('dashboard');
+</script>
+</body>
+</html>
