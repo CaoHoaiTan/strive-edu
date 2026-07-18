@@ -57,7 +57,9 @@ export default function Home() {
     }
     const { error } = await authState.client.auth.signInWithOtp({
       email: normalizedEmail,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: process.env.NEXT_PUBLIC_SITE_URL || window.location.origin,
+      },
     });
     if (error) {
       const isRateLimit = error.status === 429 || /rate limit/i.test(error.message);
